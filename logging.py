@@ -62,5 +62,8 @@ def log_runtime_environment(logger=None, level=_logging.INFO):
     logger.log(level, 'uname: {}', ' '.join(os.uname()))
     logger.log(level, 'host: {}', socket.getfqdn())
     logger.log(level, 'pid: {}', os.getpid())
+    logger.log(level, 'user: {}, uid: {}, euid: {}, gid: {}, egid: {}',
+               os.getlogin(), os.getuid(), os.geteuid(),
+               os.getgid(), os.getegid())
     logger.log(level, 'cwd: {}', os.getcwd())
     logger.log(level, 'command line: {}', sys.argv)
