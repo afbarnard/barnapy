@@ -1,9 +1,11 @@
-#
+# Convenient, high-level file API
 
 import os.path
 
 
 # TODO how handle streams? can they be effectively wrapped?
+# TODO how handle resolving names of executables?
+# TODO path templates? shell names/tokens/words?
 
 class File:
     """File paths as objects, like pathlib."""
@@ -63,6 +65,10 @@ class File:
         return (os.access(self._path, os.R_OK, effective_ids=True) and
                 os.path.isfile(self._path))
 
+    def assert_readable(self): # TODO better name? check/assert/?
+        if not self.is_readable():
+            raise ValueError('Not a readable file: {}'.format(self))
+
     def is_writeable(self):
         if os.path.exists(self._path):
             return (os.path.isfile(self._path) and
@@ -72,6 +78,12 @@ class File:
             return (os.path.exists(parent) and
                     os.path.isdir(parent) and
                     os.access(parent, os.W_OK, effective_ids=True))
+
+    def assert_writeable(self): # TODO better name? check/assert/?
+        if not self.is_writeable():
+            raise ValueError('Not a writeable file: {}'.format(self))
+
+    # TODO is_executable
 
     def open(self, mode):
         # Handle compressed files
