@@ -32,20 +32,29 @@ class Graph:
         for node in loners:
             yield (node,)
 
+    def has_node(self, node):
+        return self._node_store.has(node)
+
     def has_edge(self, node1, node2):
         return self._edge_store.has(node1, node2)
 
     def num_nodes(self):
         return len(self._node_store)
 
-    def nodes(self):
-        return iter(self._node_store)
-
     def num_edges(self):
         return len(self._edge_store)
 
+    def nodes(self):
+        return iter(self._node_store)
+
     def edges(self):
         return iter(self._edge_store)
+
+    def add_node(self, node):
+        self._node_store.add(node)
+
+    def add_edge(self, node1, node2):
+        self._edge_store.add(node1, node2)
 
 
 class SetNodeStore(set): # TODO subclass or wrap?
@@ -53,8 +62,8 @@ class SetNodeStore(set): # TODO subclass or wrap?
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def add_node(self, node):
-        self.add(node)
+    def has(self, node):
+        return node in self
 
     def nodes(self):
         yield from iter(self)
@@ -68,11 +77,6 @@ class DictSetEdgeStore(dict): # TODO subclass or wrap?
     def __iter__(self):
         return iter(self.edges())
 
-    def add(self, node1, node2):
-        if node1 not in self:
-            self[node1] = set()
-        self[node1].add(node2)
-
     def has(self, node1, node2):
         if node1 in self:
             return node2 in self[node1]
@@ -83,3 +87,8 @@ class DictSetEdgeStore(dict): # TODO subclass or wrap?
         for node, neighbors in self.items():
             for neighbor in neighbors:
                 yield (node, neighbor)
+
+    def add(self, node1, node2):
+        if node1 not in self:
+            self[node1] = set()
+        self[node1].add(node2)
