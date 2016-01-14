@@ -35,11 +35,11 @@ class Graph:
     def has_edge(self, node1, node2):
         return self._edge_store.has_edge(node1, node2)
 
-    def num_nodes(self):
-        return self._node_store.num_nodes()
+    def number_nodes(self):
+        return self._node_store.number_nodes()
 
-    def num_edges(self):
-        return self._edge_store.num_edges()
+    def number_edges(self):
+        return self._edge_store.number_edges()
 
     def nodes(self):
         return self._node_store.nodes()
@@ -78,7 +78,7 @@ class SetNodeStore():
     def has_node(self, node):
         return node in self._nodes
 
-    def num_nodes(self):
+    def number_nodes(self):
         return len(self._nodes)
 
     def nodes(self):
@@ -96,7 +96,7 @@ class DictSetEdgeStore():
     def has_edge(self, node1, node2):
         return node1 in self._parents and node2 in self._parents[node1]
 
-    def num_edges(self):
+    def number_edges(self):
         return sum(len(children) for children in self._parents.values())
 
     def edges(self):
