@@ -10,24 +10,25 @@ class Graph:
                             if edge_store is not None
                             else DictSetEdgeStore())
 
-    def from_list_def(self, edges):
-        for edge in edges:
-            if len(edge) == 1 or (len(edge) == 2 and edge[1] is None):
-                self.add_node(edge[0])
-            elif len(edge) == 2:
-                self.add_edge(*edge)
+    @staticmethod
+    def from_nodes_edges(nodes_edges):
+        _graph = Graph()
+        for item in nodes_edges:
+            if len(item) == 1 or (len(item) == 2 and item[1] is None):
+                _graph.add_node(item[0])
+            elif len(item) == 2:
+                _graph.add_edge(*item)
             else:
                 raise ValueError(
-                    'Not interpretable as an edge: {}'.format(edge))
+                    'Not interpretable as a node or edge: {}'
+                    .format(item))
+        return _graph
 
-    def to_list_def(self):
-        loners = set(self._node_store.nodes())
-        for node1, node2 in self._edge_store.edges():
-            loners.discard(node1)
-            loners.discard(node2)
-            yield (node1, node2)
-        for node in loners:
+    def to_nodes_edges(self):
+        for node in self.nodes():
             yield (node,)
+        for edge in self.edges():
+            yield edge
 
     def has_node(self, node):
         return self._node_store.has_node(node)
