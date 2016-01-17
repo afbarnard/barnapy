@@ -70,6 +70,12 @@ class Graph:
     def in_degree(self, node):
         return self._edge_store.in_degree(node)
 
+    def out_neighbors(self, node):
+        return self._edge_store.out_neighbors(node)
+
+    def in_neighbors(self, node):
+        return self._edge_store.in_neighbors(node)
+
 
 class SetNodeStore():
 
@@ -119,3 +125,13 @@ class DictSetEdgeStore():
     def in_degree(self, node):
         return sum(int(node in children)
                    for children in self._parents.values())
+
+    def out_neighbors(self, node):
+        if node in self._parents:
+            return iter(self._parents[node])
+        else:
+            return iter(())
+
+    def in_neighbors(self, node):
+        return (parent for parent, children in self._parents.items()
+                if node in children)
