@@ -71,6 +71,9 @@ class File:
         # Note: must be method as relies on IO and may change over time
         return os.path.abspath(self._path)
 
+    def exists(self):
+        return os.path.exists(self._path)
+
     def is_readable(self):
         return (os.access(self._path, os.R_OK, effective_ids=True) and
                 os.path.isfile(self._path))
