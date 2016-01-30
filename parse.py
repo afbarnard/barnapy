@@ -7,7 +7,7 @@ _predicate_pattern = re.compile(r'\s*(\w[\w!?@$_-]*)(?:\s*\((.*)\))?\s*')
 _list_split_pattern = re.compile(r'\s*,\s*')
 
 def predicate(text):
-    match = _predicate_pattern.fullmatch(text)
+    match = _predicate_pattern.match(text)
     if match:
         name, args_text = match.groups()
         if (args_text is None or
@@ -27,7 +27,7 @@ def array_index(text):
     """Parses the text as array indexing syntax (e.g. "a[0]").  Returns
     a (name, index) pair.
     """
-    match = _array_index_pattern.fullmatch(text)
+    match = _array_index_pattern.match(text)
     if match is not None:
         return match.groups()
     else:
