@@ -21,30 +21,34 @@ def read_records_from_csv(
         'read_records_from_csv')
     rownum = 1
     num_bad = 0
-    for rawrow in csv.reader(file):
-        # Discard empty rows
-        if rawrow is None or len(rawrow) == 0:
-            continue
-        # Discard whitespace and comments
-        first = rawrow[0].lstrip()
-        if ((len(rawrow) == 1 and len(first) == 0) or
-                first.startswith(commentchar)):
-            continue
-        # Parse, validate, construct
-        try:
-            row = (record_constructor(rawrow)
-                   if record_constructor is not None else rawrow)
-        except Exception as e:
-            logger.exception(
-                    'Discarding bad record {}: {}', rownum, rawrow)
-            num_bad += 1
-        else:
-            # Return the row if not None
-            if row is not None:
-                yield row
-                rownum += 1
-    # Log results of reading
-    num_records = rownum - 1
-    logger.info(
+    # Wrap the following in a try/finally so that the logging is
+    # executed even if not all the rows are yielded
+    try:
+        for rawrow in csv.reader(file):
+            # Discard empty rows
+            if rawrow is None or len(rawrow) == 0:
+                continue
+            # Discard whitespace and comments
+            first = rawrow[0].lstrip()
+            if ((len(rawrow) == 1 and len(first) == 0) or
+                    first.startswith(commentchar)):
+                continue
+            # Parse, validate, construct
+            try:
+                row = (record_constructor(rawrow)
+                       if record_constructor is not None else rawrow)
+            except Exception as e:
+                logger.exception(
+                        'Discarding bad record {}: {}', rownum, rawrow)
+                num_bad += 1
+            else:
+                # Return the row if not None
+                if row is not None:
+                    yield row
+                    rownum += 1
+    finally:
+        # Log results of reading
+        num_records = rownum - 1
+        logger.info(
             'Processed {}/{} records.  Discarded {}/{} records.',
             num_records - num_bad, num_records, num_bad, num_records)
