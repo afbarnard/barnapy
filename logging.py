@@ -25,7 +25,7 @@ def log_record_factory(*args, **kwargs):
 def default_config(file=None, level=_logging.INFO):
     """Sets up the logging system with a default configuration."""
     format='{asctime} {levelname} {name}: {message}'
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%dT%H:%M:%S'
     style='{'
     # Handle filenames, streams, and default.  This has to be done with
     # separate calls because basicConfig won't allow multiple
