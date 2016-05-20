@@ -1,4 +1,7 @@
 # Basic graph implementation
+#
+# Copyright (c) 2016 Aubrey Barnard.  This is free software.  See
+# LICENSE for details.
 
 class Graph:
 

@@ -1,4 +1,7 @@
 # Shell-like functionality
+#
+# Copyright (c) 2016 Aubrey Barnard.  This is free software.  See
+# LICENSE for details.
 
 import os.path
 import shutil

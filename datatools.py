@@ -1,9 +1,12 @@
 # Data tools
+#
+# Copyright (c) 2016 Aubrey Barnard.  This is free software.  See
+# LICENSE for details.
 
 import itertools as itools
 
 
-def map_reduce_by_key(items, mapper=None, reducer=None): # TODO move to core module
+def map_reduce_by_key(items, mapper=None, reducer=None):
     """Maps and reduces items by key.  Returns an iterable of (key,
     reduced) pairs.
 
