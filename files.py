@@ -1,7 +1,8 @@
-# Convenient, high-level file API
-#
-# Copyright (c) 2016 Aubrey Barnard.  This is free software.  See
-# LICENSE for details.
+"""Convenient, high-level file API
+
+Copyright (c) 2016 Aubrey Barnard.  This is free software released under
+the MIT license.  See LICENSE for details.
+"""
 
 import io
 import os.path

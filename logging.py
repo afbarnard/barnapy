@@ -1,8 +1,9 @@
-# Wrapper module for the standard logging module that provides a
-# sensible default configuration and {}-style formatting.
-#
-# Copyright (c) 2016 Aubrey Barnard.  This is free software.  See
-# LICENSE for details.
+"""Wrapper module for the standard logging module that provides a
+sensible default configuration and {}-style formatting.
+
+Copyright (c) 2016 Aubrey Barnard.  This is free software released under
+the MIT license.  See LICENSE for details.
+"""
 
 import io
 import logging as _logging

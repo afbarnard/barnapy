@@ -1,8 +1,9 @@
-# Fundamental data processing operations, utility functions for
-# iterables, and other data tools
-#
-# Copyright (c) 2016 Aubrey Barnard.  This is free software.  See
-# LICENSE for details.
+"""Fundamental data processing operations, utility functions for
+iterables, and other data tools
+
+Copyright (c) 2016 Aubrey Barnard.  This is free software released under
+the MIT license.  See LICENSE for details.
+"""
 
 import itertools as itools
 
