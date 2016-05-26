@@ -10,18 +10,20 @@ import subprocess
 import sys
 
 
-class ShellException(Exception):
+class ShellError(Exception):
     pass
 
 
 def resolve_path(path):
     return os.path.abspath(os.path.expanduser(path))
 
+
 def resolve_executable(path):
     if os.path.sep in path:
         return resolve_path(path)
     else:
         return shutil.which(path)
+
 
 def run(executable, *args):
     executable = resolve_executable(executable)
@@ -39,12 +41,12 @@ def run(executable, *args):
         if process.returncode == 0:
             return out
         elif process.returncode < 0:
-            raise ShellException(
+            raise ShellError(
                 'Process exited with signal: {}'
                 .format(-process.returncode),
                 out)
         else:
-            raise ShellException(
+            raise ShellError(
                 'Process exited with error status: {}'
                 .format(process.returncode),
                 out)

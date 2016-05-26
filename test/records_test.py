@@ -67,5 +67,6 @@ class ReadRecordsFromCsvTest(unittest.TestCase):
         expected = tuple(
             [f.strip() for f in self.raw_records[i]]
             for i in (0, 4, 5, 6, 7, 8))
-        actual = tuple(records.read_records_from_csv(input, record_constructor))
+        actual = tuple(records.read_records_from_csv(
+            input, record_constructor))
         self.assertEqual(expected, actual)

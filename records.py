@@ -11,7 +11,7 @@ from . import logging
 
 def read_records_from_csv(
         file, record_constructor=None, commentchar='#'):
-    """Reads records from a CSV-formatted file.
+    """Generate records by reading from a CSV-formatted file.
 
     Discards comment lines (ones that start with the given comment
     character) and whitespace lines.  Logs errors rather than
@@ -34,13 +34,14 @@ def read_records_from_csv(
                 continue
             # Discard whitespace and comments
             first = rawrow[0].lstrip()
-            if ((len(rawrow) == 1 and len(first) == 0) or
-                    first.startswith(commentchar)):
+            if ((len(rawrow) == 1 and len(first) == 0)
+                    or first.startswith(commentchar)):
                 continue
             # Parse, validate, construct
             try:
                 row = (record_constructor(rawrow)
-                       if record_constructor is not None else rawrow)
+                       if record_constructor is not None
+                       else rawrow)
             except Exception as e:
                 logger.exception(
                         'Discarding bad record {}: {}', rownum, rawrow)

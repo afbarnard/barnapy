@@ -12,6 +12,7 @@ import os.path
 # TODO how handle resolving names of executables?
 # TODO path templates? shell names/tokens/words?
 
+
 def new(filename_or_stream):
     if isinstance(filename_or_stream, str):
         return File(filename_or_stream)

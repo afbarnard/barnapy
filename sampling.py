@@ -9,19 +9,19 @@ import random
 
 
 def reservoir_sample(items, sample_size, prng=random):
-    """Samples the given items without replacement.
+    """Sample the given items without replacement and return them in a
+    list (the "reservoir").
 
     Works in one pass without knowing the number of items and so is
-    suitable for use with iterables (unlike `random.sample`).  Returns
-    the samples in a list (the "reservoir").  The returned reservoir is
-    a genuine random sample of the given items but it is not guaranteed
-    to be in a random order; shuffle it as needed.  If the sample size
-    is larger than the number of items, then the reservoir will just
-    include all the items.
+    suitable for use with iterables (unlike `random.sample`).  The
+    returned reservoir is a genuine random sample of the given items but
+    it is not guaranteed to be in a random order; shuffle it as needed.
+    If the sample size is larger than the number of items, then the
+    reservoir will just include all the items.
 
-    * items: Iterable of items.
-    * sample_size: How many samples to return in the reservoir.
-    * prng: The pseudo-random number generator to use.
+    * items: Iterable
+    * sample_size: How many samples to return in the reservoir
+    * prng: The pseudo-random number generator to use
 
     References:
     * http://en.wikipedia.org/wiki/Reservoir_sampling
@@ -46,8 +46,9 @@ def reservoir_sample(items, sample_size, prng=random):
     return reservoir
     # TODO update to version that uses fewer random numbers
 
+
 def reservoir_sample_in_order(items, sample_size, prng=random):
-    """Samples the given items just as in `reservoir_sample` but returns
+    """Sample the given items just as in `reservoir_sample` but return
     the sampled items in their original order.
     """
     # Sample enumerated items

@@ -27,7 +27,7 @@ def log_record_factory(*args, **kwargs):
 
 
 def default_config(file=None, level=_logging.INFO):
-    """Sets up the logging system with a default configuration."""
+    """Set up the logging system with a default configuration."""
     format='{asctime} {levelname} {name}: {message}'
     datefmt='%Y-%m-%dT%H:%M:%S'
     style='{'
@@ -50,6 +50,7 @@ def default_config(file=None, level=_logging.INFO):
     # Set factory to handle {}-style formatting in messages
     _logging.setLogRecordFactory(log_record_factory)
 
+
 def log_runtime_environment(logger=None, level=_logging.INFO):
     # Get logger
     if logger is None:
@@ -58,7 +59,9 @@ def log_runtime_environment(logger=None, level=_logging.INFO):
     logger.log(level, 'Python {}', sys.version.replace('\n', ' '))
     logger.log(level, 'executable: {}', sys.executable)
     logger.log(level,
-               'version: {0.major}.{0.minor}.{0.micro}-{0.releaselevel}.{0.serial} running on {1} {2.major}.{2.minor}.{2.micro}-{2.releaselevel}.{2.serial}',
+               'version: {0.major}.{0.minor}.{0.micro}-{0.releaselevel}.'
+                   '{0.serial} running on {1} {2.major}.{2.minor}.'
+                   '{2.micro}-{2.releaselevel}.{2.serial}',
                sys.version_info,
                sys.implementation.name,
                sys.implementation.version)
