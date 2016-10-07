@@ -21,6 +21,9 @@ def new(filename_or_stream):
     else:
         raise TypeError('Not a filename or stream: {}'.format())
 
+def open(path, mode='rt'):
+    return new(path).open(mode=mode)
+
 
 class File:
     """File paths as objects, like pathlib."""
@@ -103,7 +106,7 @@ class File:
 
     # TODO is_executable
 
-    def open(self, mode):
+    def open(self, mode='rt'):
         # Handle compressed files
         suffix = self.suffix.lower()
         if suffix in ('bz2', 'bzip2'):
