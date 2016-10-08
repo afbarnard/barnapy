@@ -111,18 +111,18 @@ class File:
         suffix = self.suffix.lower()
         if suffix in ('bz2', 'bzip2'):
             import bz2
-            return bz2.open(self._path, mode)
+            return bz2.open(self._path, mode=mode)
         elif suffix in ('xz', 'lzma'):
             import lzma
-            return lzma.open(self._path, mode)
+            return lzma.open(self._path, mode=mode)
         elif suffix in ('gz', 'zip'):
             raise NotImplementedError(
                 'Zip (de)compression not implemented.') # TODO
         else:
-            return open(self._path, mode)
+            return io.open(self._path, mode=mode)
 
     def generate_lines(self):
-        with self.open('rt') as file:
+        with self.open(mode='rt') as file:
             for line in file:
                 yield line
 
@@ -163,7 +163,7 @@ class Stream:
         if not self.is_writable():
             raise ValueError('Not a writable stream: {}'.format(self))
 
-    def open(self, mode):
+    def open(self, mode='rt'):
         # Check mode is compatible with the existing stream
         mode = mode.lower()
         if 'r' in mode:
@@ -185,7 +185,7 @@ class Stream:
         return self._stream
 
     def generate_lines(self):
-        with self.open('rt') as file:
+        with self.open(mode='rt') as file:
             for line in file:
                 yield line
 
