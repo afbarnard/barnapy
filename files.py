@@ -115,9 +115,10 @@ class File:
         elif suffix in ('xz', 'lzma'):
             import lzma
             return lzma.open(self._path, mode=mode)
-        elif suffix in ('gz', 'zip'):
-            raise NotImplementedError(
-                'Zip (de)compression not implemented.') # TODO
+        # Use gzip for all common Lempel-Ziv compression suffixes
+        elif suffix in ('gz', 'z', 'Z'):
+            import gzip
+            return gzip.open(self._path, mode=mode)
         else:
             return io.open(self._path, mode=mode)
 
