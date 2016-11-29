@@ -4,6 +4,8 @@ Copyright (c) 2016 Aubrey Barnard.  This is free software released under
 the MIT license.  See LICENSE for details.
 """
 
+import collections
+
 
 class Graph:
 
@@ -236,3 +238,41 @@ class DictWeightStore:
 
     def del_weight(self, node1, node2):
         del self._edges_weights[node1, node2]
+
+
+# Algorithms
+
+def visit_breadth_first(graph, start):
+    """Generate all nodes reachable from the given node in breadth-first
+    manner.
+
+    """
+    # Queue of unvisited nodes.  Seed with the neighbors of the start so
+    # as not to yield the start unless it is reachable from itself.
+    queue = collections.deque(graph.out_neighbors(start))
+    # Visited nodes
+    visited = set()
+    # Search
+    while queue:
+        # Visit the next node if it hasn't already been visited
+        node = queue.popleft()
+        if node in visited:
+            continue
+        yield node
+        visited.add(node)
+        # Enqueue unvisited neighbors
+        for neighbor in graph.out_neighbors(node):
+            if neighbor not in visited:
+                queue.append(neighbor)
+
+
+def path_exists_bfs(graph, start, end):
+    """Whether a path from start to end exists in the given graph.
+
+    Uses breadth-first search.
+
+    """
+    for node in visit_breadth_first(graph, start):
+        if node == end:
+            return True
+    return False
