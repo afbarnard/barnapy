@@ -7,10 +7,10 @@ values are desired instead of None, consider `make_error_if_none` and
 
 Requires Python >= 3.4 for `re.fullmatch`.
 
-Copyright (c) 2016 Aubrey Barnard.  This is free software released under
-the MIT license.  See LICENSE for details.
-
 """
+
+# Copyright (c) 2016 Aubrey Barnard.  This is free software released under
+# the MIT license.  See LICENSE for details.
 
 import builtins
 import re
@@ -74,85 +74,122 @@ bool_false_pattern = re.compile(r'\s*(?:false|no)\s*', re.IGNORECASE)
 """Pattern that matches None (and null, nil, and NA)"""
 none_pattern = re.compile(r'\s*n(?:a|one|ull|il)\s*', re.IGNORECASE)
 
+"""Pattern that matches whitespace or the empty string"""
+empty_pattern = re.compile(r'\s*')
+
 
 # General parsing algorithm
 
-def parse(text, patterns, constructors):
-    """Parse the given text and convert it into a value or return None.
+def parse(text, detectors, constructors, default=None):
+    """Parse the given text and convert it into a value.
+
+    Return a (value, ok) pair per Go style.  The pair is (<value>, True)
+    on parsing success and (<default>, False) on failure.  (Go style has
+    been used here since parsing can, in general, return any value, and
+    thus parsing success cannot be determined from the value alone.)
 
     Intended mainly as a general template algorithm for making
     pattern-based parsers.
 
     text: String to parse
 
-    patterns: List of patterns to try
+    patterns: List of detectors to try
 
-    constructors: List of constructors corresponding to the patterns
+    constructors: List of constructors corresponding to the detectors
 
     """
-    # Find the first matching pattern and use the corresponding
-    # constructor to convert the text into a value
-    for pattern, constructor in zip(patterns, constructors):
-        match = pattern.fullmatch(text)
-        if match is not None:
-            return constructor(text)
-    # Otherwise return None
-    return None
+    # Detect the first match and use the corresponding constructor to
+    # convert the text into a value
+    for detector, constructor in zip(detectors, constructors):
+        if detector(text):
+            return constructor(text), True
+    # Otherwise return default
+    return default, False
 
 
-# Parsing various literals
-
-def int(text):
-    """Return an integer parsed from the given text or None."""
-    if integer_pattern.fullmatch(text) is not None:
-        return builtins.int(text)
-    else:
-        return None
+# Detecting and parsing various literals
 
 
-def float(text):
-    """Return a float parsed from the given text or None."""
-    if float_pattern.fullmatch(text) is not None:
-        return builtins.float(text)
-    else:
-        return None
+def is_int(text):
+    """Whether the given text can be parsed as an integer."""
+    return integer_pattern.fullmatch(text) is not None
 
 
-def bool(text):
-    """Return a boolean parsed from the given text or None."""
+def int(text, default=None):
+    """Return an integer parsed from the given text, else `default`."""
+    return builtins.int(text) if is_int(text) else default
+
+
+def is_float(text):
+    """Whether the given text can be parsed as a float."""
+    return float_pattern.fullmatch(text) is not None
+
+
+def float(text, default=None):
+    """Return a float parsed from the given text, else `default`."""
+    return builtins.float(text) if is_float(text) else default
+
+
+def is_bool(text):
+    """Whether the given text can be parsed as a boolean."""
+    return (bool_true_pattern.fullmatch(text) is not None
+            or bool_false_pattern.fullmatch(text) is not None)
+
+
+def bool(text, default=None):
+    """Return a boolean parsed from the given text, else `default`."""
     if bool_true_pattern.fullmatch(text) is not None:
         return True
     elif bool_false_pattern.fullmatch(text) is not None:
         return False
     else:
-        return None
+        return default
 
 
-def literal(text):
-    """Return a literal (int, float, bool, None) parsed from the given text.
+# The following "literals" only have functions for detection because
+# there is no obvious value to construct or return.  In particular, it
+# makes no sense to return None as a sentinel value from a function that
+# would also return None on success.  Other sentinel values are possible
+# but likely very application-specific.
 
-    If the text is not parseable as a literal it is returned unharmed.
+
+def is_none(text):
+    """Whether the given text is None or a synonym (null, nil, na)."""
+    return none_pattern.fullmatch(text) is not None
+
+
+def is_empty(text):
+    """Whether the given text is empty or only whitespace characters."""
+    return empty_pattern.fullmatch(text) is not None
+
+
+def literal(text, default=None):
+    """Parse a literal (int, float, bool, None) from the given text.
+
+    Return a (value, ok) pair per Go style.  If parsing is successful,
+    then (<value>, True) is returned, otherwise (<default>, False) is
+    returned.  This is needed for distinguishable parsing of None.
 
     """
     # Try parsing the literal in order of (assumed) frequency of types
 
     # Return empty as is
     if not text:
-        return text
+        return text, True
     # Integer
     elif integer_pattern.fullmatch(text) is not None:
-        return builtins.int(text)
+        return builtins.int(text), True
     # Float
     elif float_pattern.fullmatch(text) is not None:
-        return builtins.float(text)
+        return builtins.float(text), True
     # Boolean
     elif bool_true_pattern.fullmatch(text) is not None:
-        return True
+        return True, True
     elif bool_false_pattern.fullmatch(text) is not None:
-        return False
+        return False, True
     # None / Null
     elif none_pattern.fullmatch(text) is not None:
-        return None
+        return None, True
     # Whitespace, symbols, strings, or non-literals
     else:
-        return text
+        return default, False
