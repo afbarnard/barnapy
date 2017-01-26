@@ -123,9 +123,9 @@ class TwoByTwoTableTest(unittest.TestCase):
 class TemporalTwoByTwoTableTest(TwoByTwoTableTest):
 
     def setUp(self):
-        self.zero = ct.TemporalTwoByTwoTable(0, 0, 0, 0, 0)
-        self.one = ct.TemporalTwoByTwoTable(0.7, 0.3, 1, 1, 1)
-        self.tab1 = ct.TemporalTwoByTwoTable(2, 1, 1, 2, 4)
+        self.zero = ct.TemporalTwoByTwoTable(0, 0, 0, 0, 0, 0)
+        self.one = ct.TemporalTwoByTwoTable(0.7, 0.3, 1, 1, 1, 1)
+        self.tab1 = ct.TemporalTwoByTwoTable(2, 1, 3, 1, 2, 4)
 
     def test_exp_bef_out(self):
         self.assertEqual(0, self.zero.exp_bef_out)

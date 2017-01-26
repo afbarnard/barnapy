@@ -45,7 +45,8 @@ class TwoByTwoTable(object):
         # Construction modes are only the above, bad arguments otherwise
         else:
             raise ValueError(
-                'Bad {0} constructor arguments.'.format(self.__name__))
+                'Insufficient {0} constructor arguments.'
+                .format(self.__class__.__name__))
 
     @property
     def exp_out(self):
@@ -130,26 +131,37 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
 
     def __init__(
         self,
-        exp_bef_out, exp_aft_out, exp_no_out=None,
-        out_no_exp=None, no_exp_out=None,
+        exp_bef_out=None, exp_aft_out=None, exp_out=None,
+        exp_no_out=None, out_no_exp=None, no_exp_out=None,
         exp_tot=None, out_tot=None, total=None,
     ):
         # Construct this class
-        if (isinstance(exp_bef_out, self._num_arg_types)
-            and isinstance(exp_aft_out, self._num_arg_types)
-        ):
-            self._exp_bef_out = exp_bef_out
-            exp_out = exp_bef_out + exp_aft_out
+        if ((isinstance(exp_bef_out, self._num_arg_types)
+             and isinstance(exp_aft_out, self._num_arg_types))
+            or (isinstance(exp_out, self._num_arg_types)
+                and (isinstance(exp_bef_out, self._num_arg_types)
+                     or isinstance(exp_aft_out, self._num_arg_types)))
+            ):
+            self._exp_bef_out = (exp_bef_out
+                                 if exp_bef_out is not None
+                                 else exp_out - exp_aft_out)
+            self._exp_aft_out = (exp_aft_out
+                                 if exp_aft_out is not None
+                                 else exp_out - exp_bef_out)
+            exp_out = (exp_out
+                       if exp_out is not None
+                       else exp_bef_out + exp_aft_out)
             # Construct superclass
             super().__init__(
                 exp_out, exp_no_out,
                 out_no_exp, no_exp_out,
                 exp_tot, out_tot, total,
-            )
-        # Otherwise bad arguments
+                )
+        # Otherwise arguments don't completely define a 2-by-2 table
         else:
             raise ValueError(
-                'Bad {0} constructor arguments.'.format(self.__name__))
+                'Insufficient {0} constructor arguments.'
+                .format(self.__class__.__name__))
 
     @property
     def exp_bef_out(self):
@@ -157,7 +169,7 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
 
     @property
     def exp_aft_out(self):
-        return self._exp_out - self._exp_bef_out
+        return self._exp_aft_out
 
     def smoothed(self, pseudocount=1):
         """Return a smoothed version of this table by adding the given
@@ -168,6 +180,7 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
         return TemporalTwoByTwoTable(
             exp_bef_out=self.exp_bef_out + half_count,
             exp_aft_out=self.exp_aft_out + half_count,
+            exp_out=self.exp_out + pseudocount,
             exp_no_out=self.exp_no_out + pseudocount,
             out_no_exp=self.out_no_exp + pseudocount,
             no_exp_out=self.no_exp_out + pseudocount,
