@@ -16,17 +16,17 @@ class TwoByTwoTable(object):
     _num_arg_types = (int, float)
 
     def __init__(
-        self,
-        exp_out=None, exp_no_out=None,
-        out_no_exp=None, no_exp_out=None,
-        exp_tot=None, out_tot=None, total=None
-    ):
+            self,
+            exp_out=None, exp_no_out=None,
+            out_no_exp=None, no_exp_out=None,
+            exp_tot=None, out_tot=None, total=None,
+            ):
         # Handle construction from 3-by-3 table corners
         if (isinstance(exp_out, self._num_arg_types)
             and isinstance(exp_tot, self._num_arg_types)
             and isinstance(out_tot, self._num_arg_types)
             and isinstance(total, self._num_arg_types)
-        ):
+            ):
             self._exp_out = exp_out
             self._exp_tot = exp_tot
             self._out_tot = out_tot
@@ -36,7 +36,7 @@ class TwoByTwoTable(object):
               and isinstance(exp_no_out, self._num_arg_types)
               and isinstance(out_no_exp, self._num_arg_types)
               and isinstance(no_exp_out, self._num_arg_types)
-        ):
+              ):
             self._exp_out = exp_out
             self._exp_tot = exp_out + exp_no_out
             self._out_tot = exp_out + out_no_exp
@@ -94,7 +94,7 @@ class TwoByTwoTable(object):
             exp_no_out=self.exp_no_out + pseudocount,
             out_no_exp=self.out_no_exp + pseudocount,
             no_exp_out=self.no_exp_out + pseudocount,
-        )
+            )
 
     def table_2x2(self, pseudocount=None):
         if isinstance(pseudocount, self._num_arg_types):
@@ -130,11 +130,11 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
     """
 
     def __init__(
-        self,
-        exp_bef_out=None, exp_aft_out=None, exp_out=None,
-        exp_no_out=None, out_no_exp=None, no_exp_out=None,
-        exp_tot=None, out_tot=None, total=None,
-    ):
+            self,
+            exp_bef_out=None, exp_aft_out=None, exp_out=None,
+            exp_no_out=None, out_no_exp=None, no_exp_out=None,
+            exp_tot=None, out_tot=None, total=None,
+            ):
         # Construct this class
         if ((isinstance(exp_bef_out, self._num_arg_types)
              and isinstance(exp_aft_out, self._num_arg_types))
@@ -184,7 +184,7 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
             exp_no_out=self.exp_no_out + pseudocount,
             out_no_exp=self.out_no_exp + pseudocount,
             no_exp_out=self.no_exp_out + pseudocount,
-        )
+            )
 
     def cohort_table(self):
         """Creates a copy of this table that treats the counts as in a cohort
@@ -200,7 +200,7 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
             exp_tot=(self.exp_tot - self.exp_aft_out),
             out_tot=self.out_tot,
             total=self.total,
-        )
+            )
 
 
 def binary_mutual_information(table):
@@ -239,7 +239,7 @@ def relative_risk(table):
     # are "equal" so the relative risk is one
     if ((table.exp_tot == 0 and table.no_exp_tot == 0)
         or (table.exp_out == 0 and table.out_no_exp == 0)
-    ):
+        ):
         return 1.0
     # If the numerator rate is zero, then the relative risk cannot get
     # any less, so it is also zero
@@ -260,7 +260,7 @@ def odds_ratio(table):
     # are "equal" so the ratio is one
     if ((table.exp_tot == 0 and table.no_exp_tot == 0)
         or (table.exp_out == 0 and table.out_no_exp == 0)
-    ):
+        ):
         return 1.0
     # If the numerator odds are zero, then the ratio cannot get any
     # less, so it is zero

@@ -22,7 +22,7 @@ class TwoByTwoTableTest(unittest.TestCase):
             (1, 2, 3),
             (3, 4, 7),
             (4, 6, 10),
-        )
+            )
         actual = ct.TwoByTwoTable(1, 2, 3, 4).table_3x3()
         self.assertEqual(expected, actual)
 
@@ -33,7 +33,7 @@ class TwoByTwoTableTest(unittest.TestCase):
             exp_no_out=2,
             out_no_exp=3,
             no_exp_out=4,
-        ).table_3x3()
+            ).table_3x3()
         self.assertEqual(expected, actual)
 
     def test_construct_3x3_corners(self):
@@ -43,7 +43,7 @@ class TwoByTwoTableTest(unittest.TestCase):
             exp_tot=3,
             out_tot=4,
             total=10,
-        ).table_3x3()
+            ).table_3x3()
         self.assertEqual(expected, actual)
 
     def test_exp_out(self):
@@ -98,7 +98,7 @@ class TwoByTwoTableTest(unittest.TestCase):
             (6, 4, 10),
             (5, 7, 12),
             (11, 11, 22),
-        )
+            )
         actual = self.tab1.smoothed(pseudocount=3).table_3x3()
         self.assertEqual(expected, actual)
 
@@ -106,7 +106,7 @@ class TwoByTwoTableTest(unittest.TestCase):
         expected = (
             (3, 1),
             (2, 4),
-        )
+            )
         actual = self.tab1.table_2x2()
         self.assertEqual(expected, actual)
 
@@ -115,7 +115,7 @@ class TwoByTwoTableTest(unittest.TestCase):
             (3, 1, 4),
             (2, 4, 6),
             (5, 5, 10),
-        )
+            )
         actual = self.tab1.table_3x3()
         self.assertEqual(expected, actual)
 
@@ -142,7 +142,7 @@ class TemporalTwoByTwoTableTest(TwoByTwoTableTest):
             (5, 3, 8),
             (4, 6, 10),
             (9, 9, 18),
-        )
+            )
         smoothed = self.tab1.smoothed(pseudocount=2)
         actual = smoothed.table_3x3()
         self.assertEqual(expected, actual)
@@ -154,7 +154,7 @@ class TemporalTwoByTwoTableTest(TwoByTwoTableTest):
             (2, 1, 3),
             (3, 4, 7),
             (5, 5, 10),
-        )
+            )
         actual = self.tab1.cohort_table().table_3x3()
         self.assertEqual(expected, actual)
 
