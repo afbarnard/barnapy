@@ -1,7 +1,10 @@
-"""2-by-2 contingency tables and related functions"""
+"""2-by-2 contingency tables and scores"""
 
 # Copyright (c) 2017 Aubrey Barnard.  This is free software released
 # under the MIT license.  See LICENSE for details.
+
+
+import math
 
 
 class TwoByTwoTable(object):
@@ -185,3 +188,75 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
             out_tot=self.out_tot,
             total=self.total,
         )
+
+
+def binary_mutual_information(table):
+    """Return the mutual information between the two binary variables in the
+    given 2-by-2 table
+
+    """
+    # Shortcut / Special-Case the zero distribution
+    if table.total == 0:
+        return 0.0
+    # Do the calculation in a way that handles zeros.  (If the numerator
+    # in the log is greater than zero, the denominator cannot be zero.)
+    mi_sum = 0.0
+    if table.exp_out > 0:
+        mi_sum += (table.exp_out
+                   * math.log((table.exp_out * table.total)
+                              / (table.exp_tot * table.out_tot)))
+    if table.exp_no_out > 0:
+        mi_sum += (table.exp_no_out
+                   * math.log((table.exp_no_out * table.total)
+                              / (table.exp_tot * table.no_out_tot)))
+    if table.out_no_exp > 0:
+        mi_sum += (table.out_no_exp
+                   * math.log((table.out_no_exp * table.total)
+                              / (table.out_tot * table.no_exp_tot)))
+    if table.no_exp_out > 0:
+        mi_sum += (table.no_exp_out
+                   * math.log((table.no_exp_out * table.total)
+                              / (table.no_out_tot * table.no_exp_tot)))
+    return mi_sum / table.total
+
+
+def relative_risk(table):
+    """Return the relative risk for the given 2-by-2 table"""
+    # When all the cells are zero or both numerators are zero the rates
+    # are "equal" so the relative risk is one
+    if ((table.exp_tot == 0 and table.no_exp_tot == 0)
+        or (table.exp_out == 0 and table.out_no_exp == 0)
+    ):
+        return 1.0
+    # If the numerator rate is zero, then the relative risk cannot get
+    # any less, so it is also zero
+    elif table.exp_tot == 0:
+        return 0.0
+    # If the denominator rate is zero, then the relative risk cannot get
+    # any larger, so it is infinity
+    elif table.no_exp_tot == 0:
+        return float('inf')
+    # (eo/et)/(one/net) -> (eo*net)/(one*et)
+    return ((table.exp_out * table.no_exp_tot)
+            / (table.out_no_exp * table.exp_tot))
+
+
+def odds_ratio(table):
+    """Return the odds ratio for the given 2-by-2 table"""
+    # When all the cells are zero or both numerators are zero the odds
+    # are "equal" so the ratio is one
+    if ((table.exp_tot == 0 and table.no_exp_tot == 0)
+        or (table.exp_out == 0 and table.out_no_exp == 0)
+    ):
+        return 1.0
+    # If the numerator odds are zero, then the ratio cannot get any
+    # less, so it is zero
+    elif table.exp_tot == 0:
+        return 0.0
+    # If the denominator odds are zero, then the ratio cannot get any
+    # larger, so it is infinity
+    elif table.no_exp_tot == 0:
+        return float('inf')
+    # (eo/eno)/(one/neo) -> (eo*neo)/(eno*one)
+    return ((table.exp_out * table.no_exp_out)
+            / (table.exp_no_out * table.out_no_exp))

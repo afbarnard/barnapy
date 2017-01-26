@@ -1,9 +1,10 @@
-"""Tests contingencyTables.py"""
+"""Tests contingency_tables.py"""
 
 # Copyright (c) 2017 Aubrey Barnard.  This is free software released
 # under the MIT license.  See LICENSE for details.
 
 
+import math
 import unittest
 
 from .. import contingency_table as ct
@@ -156,3 +157,168 @@ class TemporalTwoByTwoTableTest(TwoByTwoTableTest):
         )
         actual = self.tab1.cohort_table().table_3x3()
         self.assertEqual(expected, actual)
+
+
+def mit(joint_count, marg1_count, marg2_count, total_count):
+    """Return one term in the mutual information sum"""
+    joint = joint_count / total_count
+    marg1 = marg1_count / total_count
+    marg2 = marg2_count / total_count
+    return joint * math.log(joint / (marg1 * marg2))
+
+
+class BinaryMutualInformationTest(unittest.TestCase):
+
+    def test_independent_uniform(self):
+        #   1    0
+        # 1 0.25 0.25 0.5
+        # 0 0.25 0.25 0.5
+        #   0.5  0.5
+        table = ct.TwoByTwoTable(1, 1, 1, 1)
+        actual = ct.binary_mutual_information(table)
+        self.assertAlmostEqual(0.0, actual, places=10)
+        smoothed_table = table.smoothed(pseudocount=1)
+        actual = ct.binary_mutual_information(smoothed_table)
+        self.assertAlmostEqual(0.0, actual, places=10)
+
+    def test_independent(self):
+        #   1    0
+        # 1 0.14 0.56 0.7
+        # 0 0.06 0.24 0.3
+        #   0.2  0.8
+        table = ct.TwoByTwoTable(14, 56, 6, 24)
+        actual = ct.binary_mutual_information(table)
+        self.assertAlmostEqual(0.0, actual, places=10)
+        expected = (mit(15, 72, 22, 104) + mit(57, 72, 82, 104)
+                    + mit(7, 32, 22, 104) + mit(25, 32, 82, 104))
+        smoothed_table = table.smoothed(pseudocount=1)
+        actual = ct.binary_mutual_information(smoothed_table)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_positively_correlated(self):
+        #   1    0
+        # 1 0.95 0.03 0.98
+        # 0 0.01 0.01 0.02
+        #   0.96 0.04
+        table = ct.TwoByTwoTable(95, 3, 1, 1)
+        expected = (
+            0.95 * math.log(0.95 / (0.98 * 0.96))
+            + 0.03 * math.log(0.03 / (0.98 * 0.04))
+            + 0.01 * math.log(0.01 / (0.02 * 0.96))
+            + 0.01 * math.log(0.01 / (0.02 * 0.04)))
+        actual = ct.binary_mutual_information(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+        expected = (mit(96, 100, 98, 104) + mit(4, 100, 6, 104)
+                    + mit(2, 4, 98, 104) + mit(2, 4, 6, 104))
+        smoothed_table = table.smoothed(pseudocount=1)
+        actual = ct.binary_mutual_information(smoothed_table)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_negatively_correlated(self):
+        #   1    0
+        # 1 0.09 0.42 0.51
+        # 0 0.26 0.23 0.49
+        #   0.35 0.65
+        table = ct.TwoByTwoTable(9, 42, 26, 23)
+        expected = (
+            0.09 * math.log(0.09 / (0.51 * 0.35))
+            + 0.42 * math.log(0.42 / (0.51 * 0.65))
+            + 0.26 * math.log(0.26 / (0.49 * 0.35))
+            + 0.23 * math.log(0.23 / (0.49 * 0.65)))
+        actual = ct.binary_mutual_information(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+        expected = (mit(10, 53, 37, 104) + mit(43, 53, 67, 104)
+                    + mit(27, 51, 37, 104) + mit(24, 51, 67, 104))
+        smoothed_table = table.smoothed(pseudocount=1)
+        actual = ct.binary_mutual_information(smoothed_table)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_equal(self):
+        #   1    0
+        # 1 0.09 0    0.09
+        # 0 0    0.91 0.91
+        #   0.09 0.91
+        table = ct.TwoByTwoTable(9, 0, 0, 91)
+        expected = (0.09 * math.log(0.09 / (0.09 * 0.09))
+                    + 0.91 * math.log(0.91 / (0.91 * 0.91)))
+        actual = ct.binary_mutual_information(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+        expected = (mit(10, 11, 11, 104) + mit(1, 11, 93, 104)
+                    + mit(1, 93, 11, 104) + mit(92, 93, 93, 104))
+        smoothed_table = table.smoothed(pseudocount=1)
+        actual = ct.binary_mutual_information(smoothed_table)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_zero(self):
+        table = ct.TwoByTwoTable(0, 0, 0, 0)
+        actual = ct.binary_mutual_information(table)
+        self.assertAlmostEqual(0.0, actual, places=10)
+        smoothed_table = table.smoothed(pseudocount=1)
+        actual = ct.binary_mutual_information(smoothed_table)
+        self.assertAlmostEqual(0.0, actual, places=10)
+
+    def test_mit(self):
+        expected = 0.33 * math.log(0.33 / (0.67 * 0.10))
+        actual = mit(33, 67, 10, 100)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+
+class RelativeRiskTest(unittest.TestCase):
+
+    def test_ones(self):
+        table = ct.TwoByTwoTable(1, 1, 1, 1)
+        expected = 1.0
+        actual = ct.relative_risk(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_uniform(self):
+        table = ct.TwoByTwoTable(123.4, 123.4, 123.4, 123.4)
+        expected = 1.0
+        actual = ct.relative_risk(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_less_one(self):
+        table = ct.TwoByTwoTable(1, 4, 9, 6)
+        expected = (1 / 5) / (9 / 15)  # 1/3
+        actual = ct.relative_risk(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_more_one(self):
+        table = ct.TwoByTwoTable(9, 0, 6, 3)
+        expected = (9 / 9) / (6 / 9)  # 3/2
+        actual = ct.relative_risk(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_zero(self):
+        table = ct.TwoByTwoTable(0, 0, 0, 0)
+        expected = 1.0
+        actual = ct.relative_risk(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_zero_exp_tot(self):
+        table = ct.TwoByTwoTable(0, 0, 3, 7)
+        expected = 0.0
+        actual = ct.relative_risk(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+        table = ct.TwoByTwoTable(0, 3, 9, 4)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_zero_no_exp_tot(self):
+        table = ct.TwoByTwoTable(6, 7, 0, 0)
+        expected = float('inf')
+        actual = ct.relative_risk(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+        table = ct.TwoByTwoTable(9, 9, 0, 6)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_zero_out_tot(self):
+        table = ct.TwoByTwoTable(0, 5, 0, 5)
+        expected = 1.0
+        actual = ct.relative_risk(table)
+        self.assertAlmostEqual(expected, actual, places=10)
+
+    def test_zero_no_out_tot(self):
+        table = ct.TwoByTwoTable(8, 0, 1, 0)
+        expected = 1.0
+        actual = ct.relative_risk(table)
+        self.assertAlmostEqual(expected, actual, places=10)
