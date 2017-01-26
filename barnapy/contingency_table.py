@@ -273,3 +273,19 @@ def odds_ratio(table):
     # (eo/eno)/(one/neo) -> (eo*neo)/(eno*one)
     return ((table.exp_out * table.no_exp_out)
             / (table.exp_no_out * table.out_no_exp))
+
+
+def absolute_risk_difference(table):
+    """Return the absolute risk difference for the given 2-by-2 table"""
+    # Absolute risk difference: (eo/et)-(one/net)
+    # Define the risk as zero if the row totals are zero to avoid
+    # division by zero
+    risk_exp = ((table.exp_out / table.exp_tot)
+                if table.exp_tot > 0
+                else 0.0)
+    risk_no_exp = ((table.out_no_exp / table.no_exp_tot)
+                   if table.no_exp_tot > 0
+                   else 0.0)
+    # Return the difference of the risks of outcome in the exposed and
+    # unexposed
+    return risk_exp - risk_no_exp
