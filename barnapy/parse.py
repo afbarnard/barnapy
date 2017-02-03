@@ -9,10 +9,12 @@ Requires Python >= 3.4 for `re.fullmatch`.
 
 """
 
-# Copyright (c) 2016 Aubrey Barnard.  This is free software released under
-# the MIT license.  See LICENSE for details.
+# Copyright (c) 2017 Aubrey Barnard.  This is free software released
+# under the MIT license.  See LICENSE for details.
+
 
 import builtins
+import datetime
 import re
 
 
@@ -193,3 +195,54 @@ def literal(text, default=None):
     # Whitespace, symbols, strings, or non-literals
     else:
         return default, False
+
+
+# Dates and times
+
+
+timestamp_pattern = re.compile(
+    r'\s*(?P<year>\d{4})(?P<d_sep>\D?)(?P<month>\d{2})(?P=d_sep)(?P<day>\d{2})'
+    r'(?P<ts_sep>.)'
+    r'(?P<hour>\d{2})(?P<t_sep>\D?)(?P<minute>\d{2})(?P=t_sep)(?P<second>\d{2})'
+    r'(?:[.,](?P<fractional_second>\d+))?(?P<tz>[+-]\d{4})?\s*'
+    )
+
+def timestamp(text, default=None):
+    match = timestamp_pattern.fullmatch(text)
+    if match is not None:
+        groups = match.groupdict()
+        # Fix the fractional second if given
+        microsecond = groups.get('fractional_second')
+        if microsecond is not None:
+            # The fractional second must be a microsecond and have at
+            # most 6 digits
+            if len(microsecond) < 6:
+                microsecond += '0' * (6 - len(microsecond))
+            elif len(microsecond) > 6:
+                microsecond = microsecond[:6]
+            # Parse as an integer
+            microsecond = int(microsecond)
+        # Construct a TZ object if needed
+        tz = groups.get('tz')
+        if tz is not None:
+            tz_str = groups['tz']
+            delta = datetime.timedelta(
+                hours=int(tz_str[1:3]), minutes=int(tz_str[3:]))
+            if tz_str[0] == '-':
+                tz = datetime.timezone(-delta)
+            else:
+                tz = datetime.timezone(delta)
+        # Parse the fields and return as a datetime
+        return datetime.datetime(
+            year=int(groups['year']),
+            month=int(groups['month']),
+            day=int(groups['day']),
+            hour=int(groups['hour']),
+            minute=int(groups['minute']),
+            second=int(groups['second']),
+            microsecond=(microsecond
+                         if microsecond is not None
+                         else 0),
+            tzinfo=tz,
+            )
+    return default
