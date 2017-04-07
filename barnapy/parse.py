@@ -14,8 +14,193 @@ Requires Python >= 3.4 for `re.fullmatch`.
 
 
 import builtins
+import enum
 import datetime
 import re
+
+
+# Patterns for lexical analysis
+
+
+# Whitespace
+
+"""Pattern that matches all types of newlines"""
+newline_pattern = re.compile(r'\r\n|\n|\r')
+
+
+# Lexical analysis
+
+
+class TokenType(enum.Enum): # ENH convert to dynamic hierarchy of types
+    """Types of tokens"""
+    none = 0 # None or unknown, the null type
+    # Words
+    symbol = 10
+    word = 10
+    name = 10
+    identifier = 10
+    keyword = 11
+    # Whitespace
+    space = 20
+    newline = 21
+    # Punctuation
+    punctuation = 30
+    begin_group = 31
+    end_group = 32
+    delimiter = 33
+    operator = 34
+    # Numbers
+    integer = 40
+    long = 41
+    unsigned = 42
+    binary = 43
+    octal = 44
+    hexadecimal = 45
+    float = 46
+    double = 47
+    # Strings
+    string = 50
+    single_quoted = 51
+    double_quoted = 52
+    multichar_quoted = 53
+    triple_single_quoted = 54
+    triple_double_quoted = 55
+    # Comments
+    comment = 60
+    single_line = 61
+    multi_line = 62
+
+
+class Token:
+
+    def __init__(self, type_, position, length, line=None, column=None):
+        self._type = type_
+        self._position = position
+        self._length = length
+        self._line = line
+        self._column = column
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def position(self):
+        return self._position
+
+    @property
+    def length(self):
+        return self._length
+
+    @property
+    def end(self):
+        return self._position + self._length
+
+    @property
+    def line(self):
+        return self._line
+
+    @property
+    def column(self):
+        return self._column
+
+    def __len__(self):
+        return self._length
+
+    def __repr__(self):
+        return (
+            'Token(type={!r}, position={!r}, length={!r}, line={!r},'
+            ' column={!r})'
+            .format(self._type, self._position, self._length,
+                    self._line, self._column))
+
+    def content(self, text):
+        return text[self.position:self.end]
+
+
+class Lexer:
+
+    def __init__(self, regex_token_type_pairs):
+        self._regex_token_pairs = tuple(regex_token_type_pairs)
+
+    @staticmethod
+    def _update_line_column_numbers(text, text_idx, end_idx, line_num, col_num):
+        # Count the number of newlines in the given text slice
+        newline_match = newline_pattern.search(
+            text, pos=text_idx, endpos=end_idx)
+        while newline_match is not None:
+            line_num += 1
+            col_num = 1
+            text_idx = newline_match.end()
+            newline_match = newline_pattern.search(
+                text, pos=text_idx, endpos=end_idx)
+        # Update the column number relative to the last newline
+        col_num += end_idx - text_idx
+        # Return the updated locations
+        return line_num, col_num
+
+    def lex(self, text):
+        text_idx = 0
+        line_num = 1
+        col_num = 1
+        unk_idx = None
+        while text_idx < len(text):
+            # Maintain as an indicator if anything matched
+            match = None
+            for regex, token_type in self._regex_token_pairs:
+                match = regex.match(text, pos=text_idx)
+                if match is not None:
+                    # Match end index
+                    end_idx = match.end()
+                    # Yield any unmatched (unknown) text
+                    if unk_idx is not None:
+                        yield Token(
+                            TokenType.none,
+                            unk_idx,
+                            text_idx - unk_idx,
+                            line_num,
+                            col_num,
+                            )
+                        # Update line and column numbers
+                        line_num, col_num = (
+                            self._update_line_column_numbers(
+                                text, unk_idx, text_idx,
+                                line_num, col_num))
+                        # Clear unknown token
+                        unk_idx = None
+                    # Return this token
+                    yield Token(
+                        token_type,
+                        text_idx,
+                        end_idx - text_idx,
+                        line_num,
+                        col_num,
+                        )
+                    # Update line and column numbers
+                    line_num, col_num = (
+                        self._update_line_column_numbers(
+                            text, text_idx, end_idx, line_num, col_num))
+                    # Update position
+                    text_idx = end_idx
+                    # Continue while loop (no loop labels, so use the
+                    # match as an indicator)
+                    break
+            # Continue while loop if match
+            if match is not None:
+                continue
+            # No match.  Try again starting at the next character.
+            if unk_idx is None:
+                unk_idx = text_idx
+            text_idx += 1
+        # Yield any remaining unmatched text
+        if unk_idx is not None:
+            yield Token(
+                TokenType.none,
+                unk_idx,
+                text_idx - unk_idx,
+                line_num,
+                col_num,
+                )
 
 
 # Datalog predicate
