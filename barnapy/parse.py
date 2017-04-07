@@ -1,8 +1,8 @@
-"""Collected parsing functions
+"""Collected parsing functionality
 
-The general pattern is to try to parse some text and convert it to a
-value or otherwise return None.  If automatic exceptions or default
-values are desired instead of None, consider `make_error_if_none` and
+The parsing functions try to parse some text and convert it to a value
+or otherwise return None.  If automatic exceptions or default values are
+desired instead of None, consider `make_error_if_none` and
 `make_default_if_none` in the `general` module.
 
 Requires Python >= 3.4 for `re.fullmatch`.
@@ -24,11 +24,86 @@ import re
 
 # Whitespace
 
+"""Pattern that matches plain (non-newline) whitespace"""
+space_pattern = re.compile(r'[ \t\f\v]+')
+
 """Pattern that matches all types of newlines"""
 newline_pattern = re.compile(r'\r\n|\n|\r')
 
 """Pattern that matches whitespace or the empty string"""
 empty_pattern = re.compile(r'\s*')
+
+# Symbols, words, names, identifiers, etc.
+
+"""Pattern that matches words made of letters, digits, underscores"""
+word_pattern = re.compile(r'\w+')
+
+"""Pattern that matches names (words that start with a letter)"""
+name_pattern = re.compile(r'[a-zA-Z_]\w*')
+
+# Punctuation
+
+"""Pattern that matches punctuation"""
+punctuation_pattern = re.compile('[-()\'".,:;=+*/`~!@#$%^&?_\\\\|[\\]{}<>]+')
+
+# Strings
+
+"""Template for strings without embedded quotes"""
+string_simple_pattern_template = r'{0}[^{0}]*{0}'
+
+"""Template for strings that embed quotes by escaping"""
+string_escaped_pattern_template = r'{0}(?:[^{0}{1}]+|{1}.)*{0}'
+
+"""Template for strings that embed quotes by doubling"""
+string_doubled_pattern_template = r'{0}(?:[^{0}]+|{0}{0})*{0}'
+
+"""Pattern that matches simple strings quoted with `'`"""
+string_simple_single_quoted_pattern = re.compile(
+    string_simple_pattern_template.format(re.escape("'")))
+
+"""Pattern that matches simple strings quoted with `"`"""
+string_simple_double_quoted_pattern = re.compile(
+    string_simple_pattern_template.format(re.escape('"')))
+
+"""Pattern that matches strings quoted with `'` and escaped with `\\`"""
+string_escaped_single_quoted_pattern = re.compile(
+    string_escaped_pattern_template.format(
+        re.escape("'"), re.escape('\\')))
+
+"""Pattern that matches strings quoted with `"` and escaped with `\\`"""
+string_escaped_double_quoted_pattern = re.compile(
+    string_escaped_pattern_template.format(
+        re.escape('"'), re.escape('\\')))
+
+"""Pattern that matches strings quoted with `'''` and escaped with `\\`"""
+string_escaped_triple_single_quoted_pattern = re.compile(
+    string_escaped_pattern_template.format(
+        re.escape("'''"), re.escape('\\')))
+
+"""Pattern that matches strings quoted with `\"\"\"` and escaped with `\\`"""
+string_escaped_triple_double_quoted_pattern = re.compile(
+    string_escaped_pattern_template.format(
+        re.escape('"""'), re.escape('\\')))
+
+"""Pattern that matches strings quoted with `'` and doubled embedding"""
+string_doubled_single_quoted_pattern = re.compile(
+    string_doubled_pattern_template.format(re.escape("'")))
+
+"""Pattern that matches strings quoted with `"` and doubled embedding"""
+string_doubled_double_quoted_pattern = re.compile(
+    string_doubled_pattern_template.format(re.escape('"')))
+
+# Comments
+
+"""Template for single-line comment patterns"""
+comment_single_line_pattern_template = r'{}[^\n]*'
+
+"""Template for multi-line comment patterns"""
+comment_multi_line_pattern_template = r'{}.*?{}'
+
+"""Scripting-style (Bash, Python, Julia, etc.) single-line comment"""
+comment_hash_single_pattern = re.compile(
+    comment_single_line_pattern_template.format(re.escape('#')))
 
 
 # Patterns for literal values
