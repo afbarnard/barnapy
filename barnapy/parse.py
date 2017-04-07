@@ -27,6 +27,48 @@ import re
 """Pattern that matches all types of newlines"""
 newline_pattern = re.compile(r'\r\n|\n|\r')
 
+"""Pattern that matches whitespace or the empty string"""
+empty_pattern = re.compile(r'\s*')
+
+
+# Patterns for literal values
+
+
+# Numbers
+
+"""Pattern that matches integers"""
+integer_pattern = re.compile(r'\s*[+-]?\d+\s*')
+
+# The following float regex is optimized to avoid backtracking by
+# repeating the exponent regex
+_exponent_regex = r'[eE][+-]?\d+'
+_float_regex = (r'\s*[+-]?(?:\d+(?:\.\d*(?:{0})?|{0})|\.\d+(?:{0})?)\s*'
+                .format(_exponent_regex))
+
+"""Pattern that matches floats"""
+float_pattern = re.compile(_float_regex)
+
+# Dates and times
+
+"""Pattern that matches various timestamps"""
+timestamp_pattern = re.compile(
+    r'\s*(?P<year>\d{4})(?P<d_sep>\D?)(?P<month>\d{2})(?P=d_sep)(?P<day>\d{2})'
+    r'(?P<ts_sep>.)'
+    r'(?P<hour>\d{2})(?P<t_sep>\D?)(?P<minute>\d{2})(?P=t_sep)(?P<second>\d{2})'
+    r'(?:[.,](?P<fractional_second>\d+))?(?P<tz>[+-]\d{4})?\s*'
+    )
+
+# Constants
+
+"""Pattern that matches True (and yes)"""
+bool_true_pattern = re.compile(r'\s*(?:true|yes)\s*', re.IGNORECASE)
+
+"""Pattern that matches False (and no)"""
+bool_false_pattern = re.compile(r'\s*(?:false|no)\s*', re.IGNORECASE)
+
+"""Pattern that matches None (and null, nil, and NA)"""
+none_pattern = re.compile(r'\s*n(?:a|one|ull|il)\s*', re.IGNORECASE)
+
 
 # Lexical analysis
 
@@ -239,32 +281,6 @@ def array_index(text):
         return None
 
 
-# Regular expressions and patterns for value literals
-
-"""Pattern that matches integers"""
-integer_pattern = re.compile(r'\s*[+-]?\d+\s*')
-
-# The following float regex is optimized to avoid backtracking by
-# repeating the exponent regex
-_exponent_regex = r'[eE][+-]?\d+'
-_float_regex = (r'\s*[+-]?(?:\d+(?:\.\d*(?:{0})?|{0})|\.\d+(?:{0})?)\s*'
-                .format(_exponent_regex))
-
-"""Pattern that matches floats"""
-float_pattern = re.compile(_float_regex)
-
-"""Pattern that matches True (and yes)"""
-bool_true_pattern = re.compile(r'\s*(?:true|yes)\s*', re.IGNORECASE)
-"""Pattern that matches False (and no)"""
-bool_false_pattern = re.compile(r'\s*(?:false|no)\s*', re.IGNORECASE)
-
-"""Pattern that matches None (and null, nil, and NA)"""
-none_pattern = re.compile(r'\s*n(?:a|one|ull|il)\s*', re.IGNORECASE)
-
-"""Pattern that matches whitespace or the empty string"""
-empty_pattern = re.compile(r'\s*')
-
-
 # General parsing algorithm
 
 def parse(text, detectors, constructors, default=None):
@@ -384,13 +400,6 @@ def literal(text, default=None):
 
 # Dates and times
 
-
-timestamp_pattern = re.compile(
-    r'\s*(?P<year>\d{4})(?P<d_sep>\D?)(?P<month>\d{2})(?P=d_sep)(?P<day>\d{2})'
-    r'(?P<ts_sep>.)'
-    r'(?P<hour>\d{2})(?P<t_sep>\D?)(?P<minute>\d{2})(?P=t_sep)(?P<second>\d{2})'
-    r'(?:[.,](?P<fractional_second>\d+))?(?P<tz>[+-]\d{4})?\s*'
-    )
 
 def timestamp(text, default=None):
     match = timestamp_pattern.fullmatch(text)
