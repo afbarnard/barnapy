@@ -37,12 +37,12 @@ empty_pattern = re.compile(r'\s*')
 # Numbers
 
 """Pattern that matches integers"""
-integer_pattern = re.compile(r'\s*[+-]?\d+\s*')
+integer_pattern = re.compile(r'[+-]?\d+')
 
 # The following float regex is optimized to avoid backtracking by
 # repeating the exponent regex
 _exponent_regex = r'[eE][+-]?\d+'
-_float_regex = (r'\s*[+-]?(?:\d+(?:\.\d*(?:{0})?|{0})|\.\d+(?:{0})?)\s*'
+_float_regex = (r'[+-]?(?:\d+(?:\.\d*(?:{0})?|{0})|\.\d+(?:{0})?)'
                 .format(_exponent_regex))
 
 """Pattern that matches floats"""
@@ -52,22 +52,22 @@ float_pattern = re.compile(_float_regex)
 
 """Pattern that matches various timestamps"""
 timestamp_pattern = re.compile(
-    r'\s*(?P<year>\d{4})(?P<d_sep>\D?)(?P<month>\d{2})(?P=d_sep)(?P<day>\d{2})'
+    r'(?P<year>\d{4})(?P<d_sep>\D?)(?P<month>\d{2})(?P=d_sep)(?P<day>\d{2})'
     r'(?P<ts_sep>.)'
     r'(?P<hour>\d{2})(?P<t_sep>\D?)(?P<minute>\d{2})(?P=t_sep)(?P<second>\d{2})'
-    r'(?:[.,](?P<fractional_second>\d+))?(?P<tz>[+-]\d{4})?\s*'
+    r'(?:[.,](?P<fractional_second>\d+))?(?P<tz>[+-]\d{4})?'
     )
 
 # Constants
 
 """Pattern that matches True (and yes)"""
-bool_true_pattern = re.compile(r'\s*(?:true|yes)\s*', re.IGNORECASE)
+bool_true_pattern = re.compile(r'(?:true|yes)', re.IGNORECASE)
 
 """Pattern that matches False (and no)"""
-bool_false_pattern = re.compile(r'\s*(?:false|no)\s*', re.IGNORECASE)
+bool_false_pattern = re.compile(r'(?:false|no)', re.IGNORECASE)
 
 """Pattern that matches None (and null, nil, and NA)"""
-none_pattern = re.compile(r'\s*n(?:a|one|ull|il)\s*', re.IGNORECASE)
+none_pattern = re.compile(r'n(?:a|one|ull|il)', re.IGNORECASE)
 
 
 # Lexical analysis
@@ -315,7 +315,7 @@ def parse(text, detectors, constructors, default=None):
 
 def is_int(text):
     """Whether the given text can be parsed as an integer."""
-    return integer_pattern.fullmatch(text) is not None
+    return integer_pattern.fullmatch(text.strip()) is not None
 
 
 def int(text, default=None):
@@ -325,7 +325,7 @@ def int(text, default=None):
 
 def is_float(text):
     """Whether the given text can be parsed as a float."""
-    return float_pattern.fullmatch(text) is not None
+    return float_pattern.fullmatch(text.strip()) is not None
 
 
 def float(text, default=None):
@@ -335,12 +335,14 @@ def float(text, default=None):
 
 def is_bool(text):
     """Whether the given text can be parsed as a boolean."""
+    text = text.strip()
     return (bool_true_pattern.fullmatch(text) is not None
             or bool_false_pattern.fullmatch(text) is not None)
 
 
 def bool(text, default=None):
     """Return a boolean parsed from the given text, else `default`."""
+    text = text.strip()
     if bool_true_pattern.fullmatch(text) is not None:
         return True
     elif bool_false_pattern.fullmatch(text) is not None:
@@ -402,7 +404,7 @@ def literal(text, default=None):
 
 
 def timestamp(text, default=None):
-    match = timestamp_pattern.fullmatch(text)
+    match = timestamp_pattern.fullmatch(text.strip())
     if match is not None:
         groups = match.groupdict()
         # Fix the fractional second if given
