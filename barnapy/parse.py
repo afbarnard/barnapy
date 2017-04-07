@@ -42,8 +42,11 @@ integer_pattern = re.compile(r'[+-]?\d+')
 # The following float regex is optimized to avoid backtracking by
 # repeating the exponent regex
 _exponent_regex = r'[eE][+-]?\d+'
-_float_regex = (r'[+-]?(?:\d+(?:\.\d*(?:{0})?|{0})|\.\d+(?:{0})?)'
-                .format(_exponent_regex))
+_float_regex = (
+    r'[+-]?(?:' # Initial sign
+    r'\d+(?:\.\d*(?:{0})?|{0})' # 1. 1.0 1.0e0 1e0
+    r'|\.\d+(?:{0})?)' # .1 .1e1
+    .format(_exponent_regex))
 
 """Pattern that matches floats"""
 float_pattern = re.compile(_float_regex)
@@ -405,40 +408,40 @@ def literal(text, default=None):
 
 def timestamp(text, default=None):
     match = timestamp_pattern.fullmatch(text.strip())
-    if match is not None:
-        groups = match.groupdict()
-        # Fix the fractional second if given
-        microsecond = groups.get('fractional_second')
-        if microsecond is not None:
-            # The fractional second must be a microsecond and have at
-            # most 6 digits
-            if len(microsecond) < 6:
-                microsecond += '0' * (6 - len(microsecond))
-            elif len(microsecond) > 6:
-                microsecond = microsecond[:6]
-            # Parse as an integer
-            microsecond = int(microsecond)
-        # Construct a TZ object if needed
-        tz = groups.get('tz')
-        if tz is not None:
-            tz_str = groups['tz']
-            delta = datetime.timedelta(
-                hours=int(tz_str[1:3]), minutes=int(tz_str[3:]))
-            if tz_str[0] == '-':
-                tz = datetime.timezone(-delta)
-            else:
-                tz = datetime.timezone(delta)
-        # Parse the fields and return as a datetime
-        return datetime.datetime(
-            year=int(groups['year']),
-            month=int(groups['month']),
-            day=int(groups['day']),
-            hour=int(groups['hour']),
-            minute=int(groups['minute']),
-            second=int(groups['second']),
-            microsecond=(microsecond
-                         if microsecond is not None
-                         else 0),
-            tzinfo=tz,
-            )
-    return default
+    if match is None:
+        return default
+    groups = match.groupdict()
+    # Fix the fractional second if given
+    microsecond = groups.get('fractional_second')
+    if microsecond is not None:
+        # The fractional second must be a microsecond and have at
+        # most 6 digits
+        if len(microsecond) < 6:
+            microsecond += '0' * (6 - len(microsecond))
+        elif len(microsecond) > 6:
+            microsecond = microsecond[:6]
+        # Parse as an integer
+        microsecond = int(microsecond)
+    # Construct a TZ object if needed
+    tz = groups.get('tz')
+    if tz is not None:
+        tz_str = groups['tz']
+        delta = datetime.timedelta(
+            hours=int(tz_str[1:3]), minutes=int(tz_str[3:]))
+        if tz_str[0] == '-':
+            tz = datetime.timezone(-delta)
+        else:
+            tz = datetime.timezone(delta)
+    # Parse the fields and return as a datetime
+    return datetime.datetime(
+        year=int(groups['year']),
+        month=int(groups['month']),
+        day=int(groups['day']),
+        hour=int(groups['hour']),
+        minute=int(groups['minute']),
+        second=int(groups['second']),
+        microsecond=(microsecond
+                     if microsecond is not None
+                     else 0),
+        tzinfo=tz,
+        )
