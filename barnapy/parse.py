@@ -24,8 +24,11 @@ import re
 
 # Whitespace
 
+"""Pattern that matches all whitespace"""
+space_pattern = re.compile(r'\s+')
+
 """Pattern that matches plain (non-newline) whitespace"""
-space_pattern = re.compile(r'[ \t\f\v]+')
+space_plain_pattern = re.compile(r'[ \t\f\v]+')
 
 """Pattern that matches all types of newlines"""
 newline_pattern = re.compile(r'\r\n|\n|\r')
@@ -44,7 +47,7 @@ name_pattern = re.compile(r'[a-zA-Z_]\w*')
 # Punctuation
 
 """Pattern that matches punctuation"""
-punctuation_pattern = re.compile('[-()\'".,:;=+*/`~!@#$%^&?_\\\\|[\\]{}<>]+')
+punctuation_word_pattern = re.compile('[-()\'".,:;=+*/`~!@#$%^&?_\\\\|[\\]{}<>]+')
 
 # Strings
 
@@ -160,6 +163,7 @@ class TokenType(enum.Enum): # ENH convert to dynamic hierarchy of types
     name = 10
     identifier = 10
     keyword = 11
+    quoted_word = 12
     # Whitespace
     space = 20
     newline = 21
