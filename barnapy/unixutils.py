@@ -5,6 +5,7 @@
 
 
 import io
+import os
 
 
 def head(filename, num_lines=10):
@@ -32,3 +33,9 @@ def tail(filename, num_lines=10, chunk_size=1024):
             lines = [line for line in file]
     # Return the last so many lines
     return lines[-num_lines:]
+
+
+def ls(path='.'):
+    walker = os.walk(path)
+    _, directories, files = next(walker)
+    return (directories, files)
