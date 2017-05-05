@@ -460,9 +460,9 @@ def literal(text, default=None):
     """
     # Try parsing the literal in order of (assumed) frequency of types
 
-    # Return empty as is
+    # Empty is None
     if not text:
-        return text, True
+        return None, True
     # Integer
     elif integer_pattern.fullmatch(text) is not None:
         return builtins.int(text), True
