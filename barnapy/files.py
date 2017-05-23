@@ -1,8 +1,8 @@
-"""Convenient, high-level file API
+"""Convenient, high-level file API"""
 
-Copyright (c) 2016 Aubrey Barnard.  This is free software released under
-the MIT license.  See LICENSE for details.
-"""
+# Copyright (c) 2017 Aubrey Barnard.  This is free software released
+# under the MIT license.  See LICENSE for details.
+
 
 import io
 import os.path
@@ -13,11 +13,13 @@ import os.path
 # TODO path templates? shell names/tokens/words?
 
 
-def new(filename_or_stream):
-    if isinstance(filename_or_stream, str):
-        return File(filename_or_stream)
-    elif isinstance(filename_or_stream, io.IOBase):
-        return Stream(filename_or_stream)
+def new(file):
+    if isinstance(file, File):
+        return file
+    elif isinstance(file, str):
+        return File(file)
+    elif isinstance(file, io.IOBase):
+        return Stream(file)
     else:
         raise TypeError('Not a filename or stream: {}'.format())
 
@@ -43,6 +45,7 @@ class File:
             self._path = self._path[:-1]
         # Properties for lazy construction
         self._parent = None
+        self._pieces = None
 
     @property
     def path(self):
@@ -65,15 +68,33 @@ class File:
         return self._parent
 
     @property
+    def pieces(self):
+        if self._pieces is None:
+            # Split on dots
+            raw_pieces = self.name.split('.')
+            # Add dots back to all pieces except the first piece
+            pieces = ['.' + p for p in raw_pieces[1:]]
+            # Add the first piece back if not empty
+            if raw_pieces[0] != '':
+                pieces.insert(0, raw_pieces[0])
+            self._pieces = pieces
+        return self._pieces
+
+    @property
     def stem(self):
-        return os.path.splitext(self.name)[0]
+        return self.pieces[0]
 
     @property
     def suffix(self):
-        suffix = os.path.splitext(self.name)[1]
-        if suffix.startswith('.'):
-            suffix = suffix[1:]
-        return suffix
+        pieces = self.pieces
+        if len(pieces) > 1:
+            return pieces[-1]
+        else:
+            return ''
+
+    @property
+    def suffixes(self):
+        return self.pieces[1:]
 
     def abspath(self):
         # Note: must be method as relies on IO and may change over time
@@ -83,8 +104,13 @@ class File:
         return os.path.exists(self._path)
 
     def is_readable(self):
-        return (os.access(self._path, os.R_OK, effective_ids=True) and
-                os.path.isfile(self._path))
+        return os.access(self._path, os.R_OK, effective_ids=True)
+
+    def is_file(self):
+        return os.path.isfile(self._path)
+
+    def is_readable_file(self):
+        return self.exists() and self.is_readable() and self.is_file()
 
     def assert_readable(self): # TODO better name? check/assert/?
         if not self.is_readable():
