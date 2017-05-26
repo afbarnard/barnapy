@@ -106,11 +106,23 @@ class File:
     def is_readable(self):
         return os.access(self._path, os.R_OK, effective_ids=True)
 
+    def is_executable(self):
+        return os.access(self._path, os.X_OK, effective_ids=True)
+
     def is_file(self):
         return os.path.isfile(self._path)
 
+    def is_directory(self):
+        return os.path.isdir(self._path)
+
     def is_readable_file(self):
-        return self.exists() and self.is_readable() and self.is_file()
+        return self.exists() and self.is_file() and self.is_readable()
+
+    def is_readable_directory(self):
+        return (self.exists()
+                and self.is_directory()
+                and self.is_readable()
+                and self.is_executable())
 
     def assert_readable(self): # TODO better name? check/assert/?
         if not self.is_readable():
@@ -129,8 +141,6 @@ class File:
     def assert_writable(self): # TODO better name? check/assert/?
         if not self.is_writable():
             raise ValueError('Not a writable file: {}'.format(self))
-
-    # TODO is_executable
 
     def open(self, mode='rt'):
         # Handle compressed files
@@ -155,6 +165,12 @@ class File:
 
     def __repr__(self):
         return 'File({})'.format(repr(self._path))
+
+    def __str__(self):
+        return self._path
+
+    def join(self, *path_components):
+        return File(self.path, *path_components)
 
 
 class Stream:
