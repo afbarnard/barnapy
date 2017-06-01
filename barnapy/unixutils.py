@@ -82,6 +82,6 @@ def glob(filenames, *patterns, case_sensitive=True):
     # Match each filename against each regex
     for filename in filenames:
         for regex in regexs:
-            if regex.match(filename) is not None:
+            if regex.fullmatch(filename) is not None:
                 yield filename
                 break
