@@ -144,7 +144,7 @@ class File:
 
     def open(self, mode='rt'):
         # Handle compressed files
-        suffix = self.suffix.lower()
+        suffix = self.suffix.lower().lstrip('.')
         if suffix in ('bz2', 'bzip2'):
             import bz2
             return bz2.open(self._path, mode=mode)
