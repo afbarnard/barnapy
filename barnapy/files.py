@@ -53,14 +53,14 @@ class File:
 
     @property
     def name(self):
-        return os.path.basename(self._path)
+        return os.path.basename(self.path)
 
     @property
     def parent(self):
-        if self._path == '.':
+        if self.path == '.':
             return self # Avoids storing self reference
         elif self._parent is None:
-            parent, name = os.path.split(self._path)
+            parent, name = os.path.split(self.path)
             if parent:
                 self._parent = File(parent)
             else:
@@ -98,22 +98,22 @@ class File:
 
     def abspath(self):
         # Note: must be method as relies on IO and may change over time
-        return os.path.abspath(self._path)
+        return os.path.abspath(self.path)
 
     def exists(self):
-        return os.path.exists(self._path)
+        return os.path.exists(self.path)
 
     def is_readable(self):
-        return os.access(self._path, os.R_OK, effective_ids=True)
+        return os.access(self.path, os.R_OK, effective_ids=True)
 
     def is_executable(self):
-        return os.access(self._path, os.X_OK, effective_ids=True)
+        return os.access(self.path, os.X_OK, effective_ids=True)
 
     def is_file(self):
-        return os.path.isfile(self._path)
+        return os.path.isfile(self.path)
 
     def is_directory(self):
-        return os.path.isdir(self._path)
+        return os.path.isdir(self.path)
 
     def is_readable_file(self):
         return self.exists() and self.is_file() and self.is_readable()
@@ -129,9 +129,9 @@ class File:
             raise ValueError('Not a readable file: {}'.format(self))
 
     def is_writable(self):
-        if os.path.exists(self._path):
-            return (os.path.isfile(self._path) and
-                    os.access(self._path, os.W_OK, effective_ids=True))
+        if os.path.exists(self.path):
+            return (os.path.isfile(self.path) and
+                    os.access(self.path, os.W_OK, effective_ids=True))
         else:
             parent = self.parent.path
             return (os.path.exists(parent) and
@@ -147,16 +147,16 @@ class File:
         suffix = self.suffix.lower().lstrip('.')
         if suffix in ('bz2', 'bzip2'):
             import bz2
-            return bz2.open(self._path, mode=mode)
+            return bz2.open(self.path, mode=mode)
         elif suffix in ('xz', 'lzma'):
             import lzma
-            return lzma.open(self._path, mode=mode)
+            return lzma.open(self.path, mode=mode)
         # Use gzip for all common Lempel-Ziv compression suffixes
         elif suffix in ('gz', 'z', 'Z'):
             import gzip
-            return gzip.open(self._path, mode=mode)
+            return gzip.open(self.path, mode=mode)
         else:
-            return io.open(self._path, mode=mode)
+            return io.open(self.path, mode=mode)
 
     def generate_lines(self):
         with self.open(mode='rt') as file:
@@ -164,10 +164,10 @@ class File:
                 yield line
 
     def __repr__(self):
-        return 'File({})'.format(repr(self._path))
+        return 'File({})'.format(repr(self.path))
 
     def __str__(self):
-        return self._path
+        return self.path
 
     def join(self, *path_components):
         return File(self.path, *path_components)
