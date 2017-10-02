@@ -1,9 +1,7 @@
-"""General-purpose functionality and utilities
+"""General-purpose functionality and utilities"""
 
-Copyright (c) 2016 Aubrey Barnard.  This is free software released under
-the MIT license.  See LICENSE for details.
-
-"""
+# Copyright (c) 2017 Aubrey Barnard.  This is free software released
+# under the MIT license.  See LICENSE for details.
 
 
 def make_error_if_none(
@@ -47,3 +45,18 @@ def make_default_if_none(function, default):
         else:
             return default
     return default_if_none
+
+
+def exec_python_file(python_filename):
+    # Load the given Python file
+    with open(python_filename, 'rt') as python_file:
+        lines = python_file.readlines()
+    # Combine lines into a single source string
+    source = ''.join(lines)
+    code = compile(source, python_filename, 'exec')
+    # Create an environment for the execution
+    env = {}
+    # Execute the compiled Python code
+    exec(code, env) # Returns None
+    # Return the environment corresponding to the file
+    return env
