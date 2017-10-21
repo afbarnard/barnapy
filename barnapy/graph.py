@@ -1,8 +1,8 @@
-"""Basic graph implementation
+"""Basic graph implementation"""
 
-Copyright (c) 2016 Aubrey Barnard.  This is free software released under
-the MIT license.  See LICENSE for details.
-"""
+# Copyright (c) 2017 Aubrey Barnard.  This is free software released
+# under the MIT license.  See LICENSE for details.
+
 
 import collections
 
@@ -119,9 +119,9 @@ class Graph:
 
     def del_node(self, node):
         # Delete edges between this node and its neighbors
-        for neighbor in self.in_neighbors(node):
+        for neighbor in list(self.in_neighbors(node)):
             self.del_edge(neighbor, node)
-        for neighbor in self.out_neighbors(node):
+        for neighbor in list(self.out_neighbors(node)):
             self.del_edge(node, neighbor)
         # Then delete this node
         self._node_store.del_node(node)
