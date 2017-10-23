@@ -21,6 +21,12 @@ class LogRecord(_logging.LogRecord):
     def getMessage(self):
         return str(self.msg).format(*self.args)
 
+    # FIXME Note that in the following an extra argument is passed when
+    # logging a dict.  This is because the logging module interprets a
+    # single dict argument as like **kwargs.  (!)  See
+    # `LogRecord.__init__` in
+    # https://hg.python.org/cpython/file/3.4/Lib/logging/__init__.py.
+
 
 def log_record_factory(*args, **kwargs):
     return LogRecord(*args, **kwargs)
