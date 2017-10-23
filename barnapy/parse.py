@@ -405,6 +405,18 @@ def int(text, default=None):
     return builtins.int(text) if is_int(text) else default
 
 
+def int_ok(text):
+    """Parse an integer from the given text.
+
+    Return a (value, ok) pair per Go style.
+
+    """
+    if is_int(text):
+        return builtins.int(text), True
+    else:
+        return None, False
+
+
 def is_float(text):
     """Whether the given text can be parsed as a float."""
     return float_pattern.fullmatch(text.strip()) is not None
@@ -413,6 +425,18 @@ def is_float(text):
 def float(text, default=None):
     """Return a float parsed from the given text, else `default`."""
     return builtins.float(text) if is_float(text) else default
+
+
+def float_ok(text):
+    """Parse a float from the given text.
+
+    Return a (value, ok) pair per Go style.
+
+    """
+    if is_float(text):
+        return builtins.float(text), True
+    else:
+        return None, False
 
 
 def is_bool(text):
@@ -431,6 +455,20 @@ def bool(text, default=None):
         return False
     else:
         return default
+
+
+def bool_ok(text):
+    """Parse a boolean from the given text.
+
+    Return a (value, ok) pair per Go style.
+    """
+    text = text.strip()
+    if bool_true_pattern.fullmatch(text) is not None:
+        return True, True
+    elif bool_false_pattern.fullmatch(text) is not None:
+        return False, True
+    else:
+        return None, False
 
 
 # The following "literals" only have functions for detection because
