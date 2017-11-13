@@ -6,7 +6,14 @@
 
 import setuptools
 
-import barnapy.version
+import barnapy
+
+
+# Extract the short and long descriptions from the documentation
+_desc = barnapy.__doc__.strip()
+_desc_par_break = _desc.find('\n\n')
+_desc_short = _desc[:_desc_par_break]
+_desc_long = _desc[_desc_par_break + 2:].strip()
 
 
 # Define package attributes
@@ -14,18 +21,15 @@ setuptools.setup(
 
     # Basics
     name='barnapy',
-    version=barnapy.version.__version__,
+    version=barnapy.__version__,
     url='https://github.com/afbarnard/barnapy',
     license='MIT',
     author='Aubrey Barnard',
     #author_email='',
 
     # Description
-    description='Infrastructure for data processing',
-    long_description="""
-Infrastructure for data processing and other common code collected from
-my research projects.  A personal standard library of sorts.
-""".strip(),
+    description=_desc_short,
+    long_description=_desc_long,
     keywords=[
         'data processing',
         'personal standard library',
