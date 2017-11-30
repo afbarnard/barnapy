@@ -10,10 +10,13 @@ import barnapy
 
 
 # Extract the short and long descriptions from the documentation
-_desc = barnapy.__doc__.strip()
-_desc_par_break = _desc.find('\n\n')
-_desc_short = _desc[:_desc_par_break]
-_desc_long = _desc[_desc_par_break + 2:].strip()
+_desc_paragraphs = barnapy.__doc__.strip().split('\n\n')
+# Make sure to keep the short description to a single line
+_desc_short = _desc_paragraphs[0].replace('\n', ' ')
+# Include all the package documentation in the long description except
+# for the first and last paragraphs which are the short description and
+# the copyright notice, respectively
+_desc_long = '\n\n'.join(_desc_paragraphs[1:-1])
 
 
 # Define package attributes
