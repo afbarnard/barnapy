@@ -1,13 +1,17 @@
-"""Wrapper module for the standard logging module that provides a
+"""
+Wrapper module for the standard logging module that provides a
 sensible default configuration and {}-style formatting.
-
-Copyright (c) 2016 Aubrey Barnard.  This is free software released under
-the MIT license.  See LICENSE for details.
 """
 
+# Copyright (c) 2017 Aubrey Barnard.  This is free software released
+# under the MIT license.  See LICENSE for details.
+
+
+import collections
 import io
 import logging as _logging
 import os
+import platform
 import socket
 import sys
 
@@ -57,26 +61,67 @@ def default_config(file=None, level=_logging.INFO):
     _logging.setLogRecordFactory(log_record_factory)
 
 
-def log_runtime_environment(logger=None, level=_logging.INFO):
-    # Get logger
+runtime_environment_elements = collections.OrderedDict((
+    # Python context
+    ('python', ('Python {}', lambda: sys.version.replace('\n', ' '))),
+    ('version', (
+        'version: {0[0].major}.{0[0].minor}.{0[0].micro}-'
+        '{0[0].releaselevel}.{0[0].serial} running on {0[1]} '
+        '{0[2].major}.{0[2].minor}.{0[2].micro}-'
+        '{0[2].releaselevel}.{0[2].serial}',
+        lambda: (sys.version_info,
+                 sys.implementation.name,
+                 sys.implementation.version))),
+    ('executable', lambda: sys.executable),
+
+    # Calling context
+    ('argv', lambda: sys.argv),
+    ('path', lambda: sys.path),
+    ('cwd', os.getcwd),
+
+    # OS context
+    ('os', ('os: {0.system} {0.node} {0.release} ({0.version}) '
+            '{0.machine} {0.processor}',
+            platform.uname)),
+    ('host', socket.getfqdn),
+
+    # Process context
+    ('pid', os.getpid),
+    ('user', ('user: {0[0]}, uid: {0[1]}, euid: {0[2]}, '
+              'gid: {0[3]}, egid: {0[4]}',
+              lambda: (os.getlogin(),
+                       os.getuid(),
+                       os.geteuid(),
+                       os.getgid(),
+                       os.getegid()))),
+))
+"""
+Defines keys, messages, and value-getting functions for gathering
+information about the runtime environment.
+"""
+
+
+def log_runtime_environment(
+        logger=None,
+        level=_logging.INFO,
+        what=runtime_environment_elements.keys(),
+):
+    """
+    Logs information about the current runtime environment.
+
+    `what`: What elements of `runtime_environment_elements` to log.
+    """
     if logger is None:
         logger = getLogger()
-    # Log environment
-    logger.log(level, 'Python {}', sys.version.replace('\n', ' '))
-    logger.log(level, 'executable: {}', sys.executable)
-    logger.log(level,
-               'version: {0.major}.{0.minor}.{0.micro}-{0.releaselevel}.'
-                   '{0.serial} running on {1} {2.major}.{2.minor}.'
-                   '{2.micro}-{2.releaselevel}.{2.serial}',
-               sys.version_info,
-               sys.implementation.name,
-               sys.implementation.version)
-    logger.log(level, 'sys.path: {}', sys.path)
-    logger.log(level, 'uname: {}', ' '.join(os.uname()))
-    logger.log(level, 'host: {}', socket.getfqdn())
-    logger.log(level, 'pid: {}', os.getpid())
-    logger.log(level, 'user: {}, uid: {}, euid: {}, gid: {}, egid: {}',
-               os.getlogin(), os.getuid(), os.geteuid(),
-               os.getgid(), os.getegid())
-    logger.log(level, 'cwd: {}', os.getcwd())
-    logger.log(level, 'command line: {}', sys.argv)
+    for key in what:
+        # Returns `None` if bad key
+        val = runtime_environment_elements.get(key)
+        if isinstance(val, tuple):
+            message, function = val
+        elif val:
+            message = key + ': {}'
+            function = val
+        else:
+            # Invalid key or value.  Just skip to the next one.
+            continue
+        logger.log(level, message, function())
