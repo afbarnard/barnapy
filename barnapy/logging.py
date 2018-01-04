@@ -61,6 +61,19 @@ def default_config(file=None, level=_logging.INFO):
     _logging.setLogRecordFactory(log_record_factory)
 
 
+def _only_posix_func(func, placeholder=None):
+    """
+    Guard a function that is only available on Posix systems.
+
+    On Posix systems, return the given function.  On non-Posix systems,
+    return a dummy function that produces placeholder values.
+    """
+    if os.name == 'posix':
+        return func
+    else:
+        return lambda: collections.defaultdict(lambda: placeholder)
+
+
 runtime_environment_elements = collections.OrderedDict((
     # Python context
     ('python', ('Python {}', lambda: sys.version.replace('\n', ' '))),
@@ -87,16 +100,14 @@ runtime_environment_elements = collections.OrderedDict((
 
     # Process context
     ('pid', os.getpid),
-    ('user', ('user: {0[0]}, uid: {0[1]}, euid: {0[2]}, '
-              'gid: {0[3]}, egid: {0[4]}',
-              lambda: (os.getlogin(),
-                       os.getuid(),
-                       os.geteuid(),
-                       os.getgid(),
-                       os.getegid()))),
+    ('user', os.getlogin),
+    ('uid', ('uid: real: {0[0]}, eff: {0[1]}, saved: {0[2]}',
+             _only_posix_func(os.getresuid))),
+    ('gid', ('gid: real: {0[0]}, eff: {0[1]}, saved: {0[2]}',
+             _only_posix_func(os.getresgid))),
 ))
 """
-Defines keys, messages, and value-getting functions for gathering
+Keys, messages, and value-getting functions for gathering
 information about the runtime environment.
 """
 
@@ -107,7 +118,7 @@ def log_runtime_environment(
         what=runtime_environment_elements.keys(),
 ):
     """
-    Logs information about the current runtime environment.
+    Log information about the current runtime environment.
 
     `what`: What elements of `runtime_environment_elements` to log.
     """
