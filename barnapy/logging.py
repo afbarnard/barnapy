@@ -61,17 +61,17 @@ def default_config(file=None, level=_logging.INFO):
     _logging.setLogRecordFactory(log_record_factory)
 
 
-def _only_posix_func(func, placeholder=None):
-    """
-    Guard a function that is only available on Posix systems.
-
-    On Posix systems, return the given function.  On non-Posix systems,
-    return a dummy function that produces placeholder values.
-    """
-    if os.name == 'posix':
-        return func
-    else:
-        return lambda: collections.defaultdict(lambda: placeholder)
+# Provide stubs for functions that are not universally available
+try:
+    osgetresuid = os.getresuid
+except:
+    def osgetresuid():
+        return (None, None, None)
+try:
+    osgetresgid = os.getresgid
+except:
+    def osgetresgid():
+        return (None, None, None)
 
 
 runtime_environment_elements = collections.OrderedDict((
@@ -102,9 +102,9 @@ runtime_environment_elements = collections.OrderedDict((
     ('pid', os.getpid),
     ('user', os.getlogin),
     ('uid', ('uid: real: {0[0]}, eff: {0[1]}, saved: {0[2]}',
-             _only_posix_func(os.getresuid))),
+             osgetresuid)),
     ('gid', ('gid: real: {0[0]}, eff: {0[1]}, saved: {0[2]}',
-             _only_posix_func(os.getresgid))),
+             osgetresgid)),
 ))
 """
 Keys, messages, and value-getting functions for gathering
