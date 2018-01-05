@@ -32,11 +32,11 @@ Use [Pip](https://pip.pypa.io/) to install Barnapy directly from GitHub.
 
     python3 -m pip install --user --upgrade https://github.com/afbarnard/barnapy/archive/master.zip#egg=barnapy
 
-If you need a specific version, replace `master` with the branch, tag,
+If you need a specific version, replace "master" with the branch, tag,
 or commit name.
 
 You can also download using Git by changing the URL.  Again, replace
-`master` to get what you want.  This becomes more valuable in
+"master" to get what you want.  This becomes more valuable in
 combination with the [`--editable`](
 https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs)
 option which keeps the Git repository around for later use ("development
