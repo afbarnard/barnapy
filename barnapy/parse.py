@@ -1,15 +1,22 @@
-"""Collected parsing functionality
+"""
+Parse atomic and compound literals using functions and algorithms
+for parsing lexical analysis.
 
-The parsing functions try to parse some text and convert it to a value
-or otherwise return None.  If automatic exceptions or default values are
-desired instead of None, consider `make_error_if_none` and
-`make_default_if_none` in the `general` module.
+The parsing functions do not throw exceptions to indicate their
+inability to parse a given text.  This is for flexibility and
+efficiency.  (You can always raise the error yourself, if you please.)
+Instead, many of the parsing functions handle errors using Go style.
+For more information about programming with errors in Go style, see the
+[introduction to error handling](
+https://blog.golang.org/error-handling-and-go) on the Go Blog, the
+[section on exceptions]( https://golang.org/doc/faq#exceptions) in the
+FAQ, and the [manual]( https://golang.org/doc/effective_go.html#errors).
+Functions that do not use Go style return a sentinel value.
 
 Requires Python >= 3.4 for `re.fullmatch`.
-
 """
 
-# Copyright (c) 2017 Aubrey Barnard.  This is free software released
+# Copyright (c) 2018 Aubrey Barnard.  This is free software released
 # under the MIT license.  See LICENSE for details.
 
 
@@ -17,6 +24,29 @@ import builtins
 import enum
 import datetime
 import re
+
+
+# Errors
+
+
+class ParseError(Exception): # TODO subclass FitamordError
+
+    def __init__(
+            message, bad_text, source=None, line=None, column=None):
+        self.message = message
+        self.bad_text = bad_text
+        self.source = source
+        self.line = line
+        self.column = column
+        location = ''
+        if source is not None:
+            location += '{}: '.format(source)
+        if line is not None:
+            location += 'line {}: '.format(line)
+        if column is not None:
+            location += 'col {}: '.format(column)
+        super().__init__(
+            '{} {}: {!r}'.format(location, message, bad_text))
 
 
 # Patterns for lexical analysis
@@ -109,7 +139,7 @@ comment_hash_single_pattern = re.compile(
     comment_single_line_pattern_template.format(re.escape('#')))
 
 
-# Patterns for literal values
+# Patterns for atomic values
 
 
 # Numbers
@@ -353,8 +383,9 @@ def predicate(text):
 _array_index_pattern = re.compile(r'\s*(\w+)\s*\[\s*(\d+)\s*\]\s*')
 
 def array_index(text):
-    """Parse the text as array indexing syntax (e.g. "a[0]") and return
-    a (name, index) pair.
+    """
+    Parse the text as array indexing syntax (e.g. "a[0]") and return a
+    (name, index) pair.
     """
     match = _array_index_pattern.match(text)
     if match is not None:
@@ -366,12 +397,14 @@ def array_index(text):
 # General parsing algorithm
 
 def parse(text, detectors, constructors, default=None):
-    """Parse the given text and convert it into a value.
+    """
+    Parse the given text and construct a value.
 
-    Return a (value, ok) pair per Go style.  The pair is (<value>, True)
-    on parsing success and (<default>, False) on failure.  (Go style has
-    been used here since parsing can, in general, return any value, and
-    thus parsing success cannot be determined from the value alone.)
+    Return a (value, error) pair per Go style.  The pair is (<value>,
+    None) on parsing success and (<default>, ParseError) on failure.
+    (Go style has been used here since parsing can, in general, return
+    any value, and thus parsing success cannot be determined from the
+    value alone.)
 
     Intended mainly as a general template algorithm for making
     pattern-based parsers.
@@ -381,18 +414,17 @@ def parse(text, detectors, constructors, default=None):
     patterns: List of detectors to try
 
     constructors: List of constructors corresponding to the detectors
-
     """
     # Detect the first match and use the corresponding constructor to
     # convert the text into a value
     for detector, constructor in zip(detectors, constructors):
         if detector(text):
-            return constructor(text), True
+            return constructor(text), None
     # Otherwise return default
-    return default, False
+    return default, ParseError('Cannot parse', text)
 
 
-# Detecting and parsing various literals
+# Detecting and parsing various atomic literals (atoms)
 
 
 def is_int(text):
@@ -405,16 +437,16 @@ def int(text, default=None):
     return builtins.int(text) if is_int(text) else default
 
 
-def int_ok(text):
-    """Parse an integer from the given text.
+def int_err(text):
+    """
+    Parse an integer from the given text.
 
-    Return a (value, ok) pair per Go style.
-
+    Return a (value, error) pair per Go style.
     """
     if is_int(text):
-        return builtins.int(text), True
+        return builtins.int(text), None
     else:
-        return None, False
+        return None, ParseError('Cannot parse an integer from', text)
 
 
 def is_float(text):
@@ -427,16 +459,16 @@ def float(text, default=None):
     return builtins.float(text) if is_float(text) else default
 
 
-def float_ok(text):
-    """Parse a float from the given text.
+def float_err(text):
+    """
+    Parse a float from the given text.
 
-    Return a (value, ok) pair per Go style.
-
+    Return a (value, error) pair per Go style.
     """
     if is_float(text):
-        return builtins.float(text), True
+        return builtins.float(text), None
     else:
-        return None, False
+        return None, ParseError('Cannot parse a float from', text)
 
 
 def is_bool(text):
@@ -457,25 +489,26 @@ def bool(text, default=None):
         return default
 
 
-def bool_ok(text):
-    """Parse a boolean from the given text.
+def bool_err(text):
+    """
+    Parse a boolean from the given text.
 
-    Return a (value, ok) pair per Go style.
+    Return a (value, error) pair per Go style.
     """
     text = text.strip()
     if bool_true_pattern.fullmatch(text) is not None:
-        return True, True
+        return True, None
     elif bool_false_pattern.fullmatch(text) is not None:
-        return False, True
+        return False, None
     else:
-        return None, False
+        return None, ParseError('Cannot parse a boolean from', text)
 
 
-# The following "literals" only have functions for detection because
-# there is no obvious value to construct or return.  In particular, it
-# makes no sense to return None as a sentinel value from a function that
-# would also return None on success.  Other sentinel values are possible
-# but likely very application-specific.
+# The following "atoms" only have functions for detection because there
+# is no obvious value to construct or return.  In particular, it makes
+# no sense to return None as a sentinel value from a function that would
+# also return None on success.  Other sentinel values are possible but
+# likely very application-specific.
 
 
 def is_none(text):
@@ -488,36 +521,32 @@ def is_empty(text):
     return empty_pattern.fullmatch(text) is not None
 
 
-def literal(text, default=None):
-    """Parse a literal (int, float, bool, None) from the given text.
+def atom_err(text, default=None):
+    """
+    Parse an atom (int, float, bool, None) from the given text.
 
-    Return a (value, ok) pair per Go style.  If parsing is successful,
-    then (<value>, True) is returned, otherwise (<default>, False) is
+    Return a (value, error) pair per Go style.  If parsing is successful,
+    then (<value>, None) is returned, otherwise (<default>, ParseError) is
     returned.  This is needed for distinguishable parsing of None.
-
     """
     # Try parsing the literal in order of (assumed) frequency of types
-
-    # Empty is None
-    if not text:
-        return None, True
     # Integer
-    elif integer_pattern.fullmatch(text) is not None:
-        return builtins.int(text), True
+    if integer_pattern.fullmatch(text) is not None:
+        return builtins.int(text), None
     # Float
     elif float_pattern.fullmatch(text) is not None:
-        return builtins.float(text), True
+        return builtins.float(text), None
     # Boolean
     elif bool_true_pattern.fullmatch(text) is not None:
-        return True, True
+        return True, None
     elif bool_false_pattern.fullmatch(text) is not None:
-        return False, True
+        return False, None
     # None / Null
     elif none_pattern.fullmatch(text) is not None:
-        return None, True
-    # Whitespace, symbols, strings, or non-literals
+        return None, None
+    # Whitespace, identifiers, strings, or non-atoms # TODO include identifiers as atoms?
     else:
-        return default, False
+        return default, ParseError('Cannot parse an atom from', text)
 
 
 # Dates and times
