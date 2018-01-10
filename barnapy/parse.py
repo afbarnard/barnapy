@@ -551,6 +551,18 @@ def is_empty(text):
     return empty_pattern.fullmatch(text) is not None
 
 
+def is_atom(text):
+    """
+    Whether the given text can be parsed as an atom (name, int, float,
+    bool, None).
+    """
+    return (is_name(text) or
+            is_int(text) or
+            is_float(text) or
+            is_bool(text) or
+            is_none(text))
+
+
 def atom_err(text, default=None):
     """
     Parse an atom (name, int, float, bool, None) from the given text.
