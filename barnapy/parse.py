@@ -381,6 +381,19 @@ def predicate(text):
         return None
 
 
+def predicate_err(text):
+    """
+    Parse a predicate from the given text.
+
+    Return a (value, error) pair per Go style.
+    """
+    result = predicate(text)
+    if result is None:
+        return None, ParseError('Cannot parse a predicate from', text)
+    else:
+        return result, None
+
+
 # Array indexing
 
 _array_index_pattern = re.compile(r'\s*(\w+)\s*\[\s*(\d+)\s*\]\s*')
@@ -395,6 +408,20 @@ def array_index(text):
         return match.groups()
     else:
         return None
+
+
+def array_index_err(text):
+    """
+    Parse an array index reference from the given text.
+
+    Return a (value, error) pair per Go style.
+    """
+    result = array_index(text)
+    if result is None:
+        return None, ParseError(
+            'Cannot parse an array index from', text)
+    else:
+        return result, None
 
 
 # General parsing algorithm
