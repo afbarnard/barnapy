@@ -71,7 +71,10 @@ empty_pattern = re.compile(r'\s*')
 """Pattern that matches words made of letters, digits, underscores"""
 word_pattern = re.compile(r'\w+')
 
-"""Pattern that matches names (words that start with a letter)"""
+"""
+Pattern that matches names, keywords, or identifiers (words that
+start with a letter or underscore)
+"""
 name_pattern = re.compile(r'[a-zA-Z_]\w*')
 
 # Punctuation
@@ -504,6 +507,33 @@ def bool_err(text):
         return None, ParseError('Cannot parse a boolean from', text)
 
 
+def is_name(text):
+    """
+    Whether the given text can be parsed as a name, keyword, or
+    identifier.
+    """
+    return name_pattern.fullmatch(text.strip()) is not None
+
+
+def name(text, default=None):
+    """Return a name parsed from the given text, else `default`."""
+    text = text.strip()
+    return text if is_name(text) else default
+
+
+def name_err(text):
+    """
+    Parse a name from the given text.
+
+    Return a (value, error) pair per Go style.
+    """
+    text = text.strip()
+    if is_name(text):
+        return text, None
+    else:
+        return None, ParseError('Cannot parse a name from', text)
+
+
 # The following "atoms" only have functions for detection because there
 # is no obvious value to construct or return.  In particular, it makes
 # no sense to return None as a sentinel value from a function that would
@@ -523,15 +553,21 @@ def is_empty(text):
 
 def atom_err(text, default=None):
     """
-    Parse an atom (int, float, bool, None) from the given text.
+    Parse an atom (name, int, float, bool, None) from the given text.
 
     Return a (value, error) pair per Go style.  If parsing is successful,
     then (<value>, None) is returned, otherwise (<default>, ParseError) is
     returned.  This is needed for distinguishable parsing of None.
+
+    This recognizes and parses all the atoms that are distinguishable by
+    their type alone.
     """
     # Try parsing the literal in order of (assumed) frequency of types
+    # Name / Keyword / Identifier
+    if name_pattern.fullmatch(text) is not None:
+        return text, None
     # Integer
-    if integer_pattern.fullmatch(text) is not None:
+    elif integer_pattern.fullmatch(text) is not None:
         return builtins.int(text), None
     # Float
     elif float_pattern.fullmatch(text) is not None:
@@ -544,7 +580,7 @@ def atom_err(text, default=None):
     # None / Null
     elif none_pattern.fullmatch(text) is not None:
         return None, None
-    # Whitespace, identifiers, strings, or non-atoms # TODO include identifiers as atoms?
+    # Whitespace, strings, or non-atoms
     else:
         return default, ParseError('Cannot parse an atom from', text)
 
