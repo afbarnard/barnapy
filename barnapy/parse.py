@@ -32,7 +32,13 @@ import re
 class ParseError(Exception): # TODO subclass FitamordError
 
     def __init__(
-            message, bad_text, source=None, line=None, column=None):
+            self,
+            message,
+            bad_text,
+            source=None,
+            line=None,
+            column=None,
+    ):
         self.message = message
         self.bad_text = bad_text
         self.source = source
@@ -46,7 +52,7 @@ class ParseError(Exception): # TODO subclass FitamordError
         if column is not None:
             location += 'col {}: '.format(column)
         super().__init__(
-            '{} {}: {!r}'.format(location, message, bad_text))
+            '{}{}: {!r}'.format(location, message, bad_text))
 
 
 # Patterns for lexical analysis
@@ -481,7 +487,9 @@ def int_err(text):
 
 def is_float(text):
     """Whether the given text can be parsed as a float."""
-    return float_pattern.fullmatch(text.strip()) is not None
+    text = text.strip()
+    return (float_pattern.fullmatch(text) is not None or
+            integer_pattern.fullmatch(text) is not None)
 
 
 def float(text, default=None):
@@ -580,19 +588,19 @@ def is_empty(text):
 
 def is_atom(text):
     """
-    Whether the given text can be parsed as an atom (name, int, float,
-    bool, None).
+    Whether the given text can be parsed as an atom (int, float, bool,
+    None, name).
     """
-    return (is_name(text) or
-            is_int(text) or
+    return (is_int(text) or
             is_float(text) or
             is_bool(text) or
-            is_none(text))
+            is_none(text) or
+            is_name(text))
 
 
 def atom_err(text, default=None):
     """
-    Parse an atom (name, int, float, bool, None) from the given text.
+    Parse an atom (int, float, bool, None, name) from the given text.
 
     Return a (value, error) pair per Go style.  If parsing is successful,
     then (<value>, None) is returned, otherwise (<default>, ParseError) is
@@ -602,11 +610,8 @@ def atom_err(text, default=None):
     their type alone.
     """
     # Try parsing the literal in order of (assumed) frequency of types
-    # Name / Keyword / Identifier
-    if name_pattern.fullmatch(text) is not None:
-        return text, None
     # Integer
-    elif integer_pattern.fullmatch(text) is not None:
+    if integer_pattern.fullmatch(text) is not None:
         return builtins.int(text), None
     # Float
     elif float_pattern.fullmatch(text) is not None:
@@ -619,6 +624,10 @@ def atom_err(text, default=None):
     # None / Null
     elif none_pattern.fullmatch(text) is not None:
         return None, None
+    # Name / Keyword / Identifier.  This must come after the other atoms
+    # whose representations are words.
+    elif name_pattern.fullmatch(text) is not None:
+        return text, None
     # Whitespace, strings, or non-atoms
     else:
         return default, ParseError('Cannot parse an atom from', text)

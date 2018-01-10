@@ -12,4 +12,4 @@ the MIT license.  See `LICENSE` for details.
 
 
 # Version
-__version__ = '0.0.5'
+__version__ = '0.0.6'
