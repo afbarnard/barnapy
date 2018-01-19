@@ -104,10 +104,12 @@ class File:
         return os.path.exists(self.path)
 
     def is_readable(self):
-        return os.access(self.path, os.R_OK, effective_ids=True)
+        return os.access(self.path, os.R_OK, effective_ids=(
+            os.access in os.supports_effective_ids))
 
     def is_executable(self):
-        return os.access(self.path, os.X_OK, effective_ids=True)
+        return os.access(self.path, os.X_OK, effective_ids=(
+            os.access in os.supports_effective_ids))
 
     def is_file(self):
         return os.path.isfile(self.path)
@@ -131,12 +133,14 @@ class File:
     def is_writable(self):
         if os.path.exists(self.path):
             return (os.path.isfile(self.path) and
-                    os.access(self.path, os.W_OK, effective_ids=True))
+                    os.access(self.path, os.W_OK, effective_ids=(
+                        os.access in os.supports_effective_ids)))
         else:
             parent = self.parent.path
             return (os.path.exists(parent) and
                     os.path.isdir(parent) and
-                    os.access(parent, os.W_OK, effective_ids=True))
+                    os.access(parent, os.W_OK, effective_ids=(
+                        os.access in os.supports_effective_ids)))
 
     def assert_writable(self): # TODO better name? check/assert/?
         if not self.is_writable():
