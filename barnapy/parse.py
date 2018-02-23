@@ -148,7 +148,7 @@ comment_hash_single_pattern = re.compile(
     comment_single_line_pattern_template.format(re.escape('#')))
 
 
-# Patterns for atomic values
+# Patterns for atomic literal values
 
 
 # Numbers
@@ -188,6 +188,11 @@ bool_false_pattern = re.compile(r'(?:false|no)', re.IGNORECASE)
 
 """Pattern that matches None (and null, nil, and NA)"""
 none_pattern = re.compile(r'n(?:a|one|ull|il)', re.IGNORECASE)
+
+# Lists
+
+"""Pattern for splitting lists without nesting or quoting"""
+naive_list_split_pattern = re.compile(r'\s*,\s*')
 
 
 # Lexical analysis
@@ -370,7 +375,6 @@ class Lexer:
 
 _predicate_pattern = re.compile(
     r'\s*(\w[\w!?@$_-]*)(?:\s*\((.*)\))?\s*')
-_list_split_pattern = re.compile(r'\s*,\s*')
 
 def predicate(text):
     match = _predicate_pattern.match(text)
@@ -381,7 +385,7 @@ def predicate(text):
                 or args_text.isspace()):
             args = ()
         else:
-            args = _list_split_pattern.split(args_text.strip())
+            args = naive_list_split_pattern.split(args_text.strip())
         return name, args
     else:
         return None
@@ -569,11 +573,11 @@ def name_err(text):
         return None, ParseError('Cannot parse a name from', text)
 
 
-# The following "atoms" only have functions for detection because there
-# is no obvious value to construct or return.  In particular, it makes
-# no sense to return None as a sentinel value from a function that would
-# also return None on success.  Other sentinel values are possible but
-# likely very application-specific.
+# The following atomic literals only have functions for detection
+# because there is no obvious value to construct or return.  In
+# particular, it makes no sense to return None as a sentinel value from
+# a function that would also return None on success.  Other sentinel
+# values are possible but likely very application-specific.
 
 
 def is_none(text):
@@ -588,8 +592,8 @@ def is_empty(text):
 
 def is_atom(text):
     """
-    Whether the given text can be parsed as an atom (int, float, bool,
-    None, name).
+    Whether the given text can be parsed as an atomic literal (int,
+    float, bool, None, name).
     """
     return (is_int(text) or
             is_float(text) or
@@ -600,7 +604,8 @@ def is_atom(text):
 
 def atom_err(text, default=None):
     """
-    Parse an atom (int, float, bool, None, name) from the given text.
+    Parse an atomic literal (int, float, bool, None, name) from the
+    given text.
 
     Return a (value, error) pair per Go style.  If parsing is successful,
     then (<value>, None) is returned, otherwise (<default>, ParseError) is
