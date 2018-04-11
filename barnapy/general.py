@@ -60,3 +60,22 @@ def exec_python_file(python_filename):
     exec(code, env) # Returns None
     # Return the environment corresponding to the file
     return env
+
+
+def track_iterator( # TODO implement adaptive, time-based frequency
+        iterator,
+        tracker,
+        track_every=100,
+        track_init=False,
+        track_end=False,
+):
+    count = 0
+    if track_init:
+        tracker(count)
+    for item in iterator:
+        yield item
+        count += 1
+        if count % track_every == 0:
+            tracker(count)
+    if track_end and count % track_every != 0:
+        tracker(count)
