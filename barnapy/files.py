@@ -128,13 +128,12 @@ class File:
 
     def assert_readable(self): # TODO better name? check/assert/?
         if not self.is_readable():
-            raise ValueError('Not a readable file: {}'.format(self))
+            raise ValueError('Not readable: {}'.format(self))
 
     def is_writable(self):
         if os.path.exists(self.path):
-            return (os.path.isfile(self.path) and
-                    os.access(self.path, os.W_OK, effective_ids=(
-                        os.access in os.supports_effective_ids)))
+            return os.access(self.path, os.W_OK, effective_ids=(
+                os.access in os.supports_effective_ids))
         else:
             parent = self.parent.path
             return (os.path.exists(parent) and
@@ -144,7 +143,7 @@ class File:
 
     def assert_writable(self): # TODO better name? check/assert/?
         if not self.is_writable():
-            raise ValueError('Not a writable file: {}'.format(self))
+            raise ValueError('Not writable: {}'.format(self))
 
     def open(self, mode='rt'):
         # Handle compressed files
