@@ -19,11 +19,14 @@ def resolve_path(path):
     return os.path.abspath(os.path.expanduser(path))
 
 
-def resolve_executable(path):
+def resolve_executable(path): # TODO check if path exists or not?
     if os.path.sep in path:
         return resolve_path(path)
     else:
-        return shutil.which(path)
+        resolved = shutil.which(path)
+        if resolved is None:
+            raise ShellError('Executable not found: {!r}'.format(path))
+        return resolved
 
 
 def run(executable, *args):
