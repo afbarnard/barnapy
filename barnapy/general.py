@@ -47,21 +47,6 @@ def make_default_if_none(function, default):
     return default_if_none
 
 
-def exec_python_file(python_filename):
-    # Load the given Python file
-    with open(python_filename, 'rt') as python_file:
-        lines = python_file.readlines()
-    # Combine lines into a single source string
-    source = ''.join(lines)
-    code = compile(source, python_filename, 'exec')
-    # Create an environment for the execution
-    env = {}
-    # Execute the compiled Python code
-    exec(code, env) # Returns None
-    # Return the environment corresponding to the file
-    return env
-
-
 def track_iterator( # TODO implement adaptive, time-based frequency
         iterator,
         tracker,
