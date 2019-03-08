@@ -16,8 +16,10 @@ Functions that do not use Go style return a sentinel value.
 Requires Python >= 3.4 for `re.fullmatch`.
 """
 
-# Copyright (c) 2018 Aubrey Barnard.  This is free software released
-# under the MIT license.  See LICENSE for details.
+# Copyright (c) 2015 - 2019 Aubrey Barnard.
+#
+# This is free software released under the MIT license.  See LICENSE for
+# details.
 
 
 import builtins
@@ -153,6 +155,9 @@ comment_hash_single_pattern = re.compile(
 
 # Numbers
 
+# TODO handle integers in various bases
+# TODO allow underscores in numbers
+
 """Pattern that matches integers"""
 integer_pattern = re.compile(r'[+-]?\d+')
 
@@ -167,6 +172,15 @@ _float_regex = (
 
 """Pattern that matches floats"""
 float_pattern = re.compile(_float_regex)
+
+"""
+Pattern that matches infinities or NaNs.
+
+This is separate from `float_pattern` so that numbers and special values
+can be distinguished.
+"""
+inf_nan_pattern = re.compile(
+    r'[+-]?(?:inf(?:inity)?|nan)', re.IGNORECASE) # TODO support Yaml syntax, e.g. "-.nan"
 
 # Dates and times
 
@@ -489,25 +503,29 @@ def int_err(text):
         return None, ParseError('Cannot parse an integer from', text)
 
 
-def is_float(text):
+def is_float(text, allow_inf_nan=True):
     """Whether the given text can be parsed as a float."""
     text = text.strip()
     return (float_pattern.fullmatch(text) is not None or
-            integer_pattern.fullmatch(text) is not None)
+            integer_pattern.fullmatch(text) is not None or
+            (allow_inf_nan and
+             inf_nan_pattern.fullmatch(text) is not None))
 
 
-def float(text, default=None):
+def float(text, default=None, allow_inf_nan=True):
     """Return a float parsed from the given text, else `default`."""
-    return builtins.float(text) if is_float(text) else default
+    return (builtins.float(text)
+            if is_float(text, allow_inf_nan)
+            else default)
 
 
-def float_err(text):
+def float_err(text, allow_inf_nan=True):
     """
     Parse a float from the given text.
 
     Return a (value, error) pair per Go style.
     """
-    if is_float(text):
+    if is_float(text, allow_inf_nan):
         return builtins.float(text), None
     else:
         return None, ParseError('Cannot parse a float from', text)
@@ -590,19 +608,19 @@ def is_empty(text):
     return empty_pattern.fullmatch(text) is not None
 
 
-def is_atom(text):
+def is_atom(text, allow_inf_nan=True):
     """
     Whether the given text can be parsed as an atomic literal (int,
     float, bool, None, name).
     """
     return (is_int(text) or
-            is_float(text) or
+            is_float(text, allow_inf_nan) or
             is_bool(text) or
             is_none(text) or
             is_name(text))
 
 
-def atom_err(text, default=None):
+def atom_err(text, default=None, allow_inf_nan=True):
     """
     Parse an atomic literal (int, float, bool, None, name) from the
     given text.
@@ -619,7 +637,9 @@ def atom_err(text, default=None):
     if integer_pattern.fullmatch(text) is not None:
         return builtins.int(text), None
     # Float
-    elif float_pattern.fullmatch(text) is not None:
+    elif (float_pattern.fullmatch(text) is not None or
+          (allow_inf_nan and
+           inf_nan_pattern.fullmatch(text) is not None)):
         return builtins.float(text), None
     # Boolean
     elif bool_true_pattern.fullmatch(text) is not None:
