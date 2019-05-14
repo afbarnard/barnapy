@@ -4,7 +4,7 @@ Infrastructure for data processing
 A supplemental standard library with an emphasis on data processing,
 made from the common code collected from my research projects.
 
-Copyright (c) 2015 - 2019 Aubrey Barnard.
+Copyright (c) 2015-2019 Aubrey Barnard.
 
 This is free software released under the MIT license.  See `LICENSE` for
 details.
@@ -15,4 +15,4 @@ details.
 
 
 # Version
-__version__ = '0.0.9'
+__version__ = '0.1.0'
