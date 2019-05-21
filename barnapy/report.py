@@ -148,3 +148,8 @@ def reshape_table(
         else:
             values[d1_key, d2_key] = val
     return values, d1_keys, d2_keys
+
+
+def matrix_from(table, keys1, keys2, default=0):
+    return [[table.get((k1, k2), default) for k2 in keys2]
+            for k1 in keys1]
