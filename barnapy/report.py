@@ -53,7 +53,7 @@ def reshape_table(
     Return a (table: dict[k1,k2]:object, dimension1-keys: set,
     dimension2-keys: set) triple where the table maps (key1, key2) pairs
     to values and the following two objects are the sets of keys for
-    each dimension.
+    each dimension in the order they appear in the records.
 
     records: Iterable<Sequence<object>>
         Tabular data as an iterable of records, where each record is an
@@ -77,7 +77,7 @@ def reshape_table(
     # Infer and convert all field arguments into tuples of indices /
     # names that can be interpreted as sets
     if fields is None:
-        fields = len(records[0])
+        fields = len(records[0]) # TODO update to work with iterable of records
     if isinstance(fields, int):
         fields = range(fields)
     fields = tuple(fields)
@@ -125,8 +125,8 @@ def reshape_table(
             'Bad value field: Not among the fields {!r}: {!r}'
             .format(fields, value_field))
     # Sets for collecting the values in each dimension
-    d1_keys = set()
-    d2_keys = set()
+    d1_keys = {}
+    d2_keys = {}
     values = {}
     # Reorganize the records by the given dimensions
     for idx, record in enumerate(records):
@@ -137,9 +137,9 @@ def reshape_table(
                              .format(idx, fields, record))
         # Extract the dimension values
         d1_key = tuple(record[fld2idx[f]] for f in d1_flds)
-        d1_keys.add(d1_key)
+        d1_keys[d1_key] = None
         d2_key = tuple(record[fld2idx[f]] for f in d2_flds)
-        d2_keys.add(d2_key)
+        d2_keys[d2_key] = None
         val = record[fld2idx[value_field]]
         key = (d1_key, d2_key)
         if key in values:
@@ -147,7 +147,7 @@ def reshape_table(
                              .format(key, values[key], val))
         else:
             values[d1_key, d2_key] = val
-    return values, d1_keys, d2_keys
+    return values, d1_keys.keys(), d2_keys.keys()
 
 
 def matrix_from(table, keys1, keys2, default=0):
