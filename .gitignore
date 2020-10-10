@@ -1,13 +1,14 @@
-# Copyright (c) 2017 Aubrey Barnard.  This is free software.  See
-# LICENSE for details.
-
 # Ignore file backups
 *~
 
-# Ignore compiled Python
-__pycache__
+# Ignore compiled Python and caches
 *.pyc
 *.pyo
+__pycache__
+.pytest_cache
+
+# Ignore egg directory when installed in "development" mode
+barnapy.egg-info
 
 # Ignore synchronization directory
 sync

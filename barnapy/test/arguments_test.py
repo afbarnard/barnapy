@@ -1,15 +1,16 @@
-"""
-Tests `arguments.py`
-"""
+"""Tests `arguments.py`."""
 
-# Copyright (c) 2017 Aubrey Barnard.  This is free software released
-# under the MIT license.  See LICENSE for details.
+# Copyright (c) 2017, 2020 Aubrey Barnard.
+#
+# This is free, open software released under the MIT license.  See
+# `LICENSE` for details.
 
 
 import collections
 import unittest
 
 from .. import arguments
+from .. import parse
 
 
 class ParseTest(unittest.TestCase):
@@ -89,3 +90,49 @@ class ParseTest(unittest.TestCase):
         kw_args, idx_args = arguments.parse(args)
         self.assertEqual(keys_values, kw_args)
         self.assertEqual(positional, idx_args)
+
+    def test_value_parser(self):
+        args = [
+            '--int', '-12345', '--flt', '-3.14e-123', '--flt=-Inf',
+            '--bool=False', '--bool', 'True', '--name', 'thing',
+            '--none', 'None', '--str=not an atom!',
+        ]
+        keys_values = {
+            'int': [-12345],
+            'flt': [-3.14e-123, float('-inf')],
+            'bool': [False, True],
+            'name': ['thing'],
+            'none': [None],
+            'str': ['not an atom!'],
+        }
+        positional = []
+        kw_args, idx_args = arguments.parse(
+            args, value_parser=lambda s: parse.atom_err(s, s)[0])
+        self.assertEqual(keys_values, kw_args)
+        self.assertEqual(positional, idx_args)
+
+    def test_reduce_values(self):
+        args = [
+            '--0', '--1', '1', '--2', 'y', '--2=n',
+            '--3', 'a', '--3=b', '--3', 'c',
+        ]
+        firsts = {'0': None, '1': '1', '2': 'y', '3': 'a'}
+        lasts = {'0': None, '1': '1', '2': 'n', '3': 'c'}
+        unwrapped = {'0': None, '1': '1',
+                     '2': ['y', 'n'], '3': ['a', 'b', 'c']}
+        positional = []
+        with self.subTest('firsts'):
+            kw_args, idx_args = arguments.parse(
+                args, reduce_values=arguments.pick_first_value)
+            self.assertEqual(firsts, kw_args)
+            self.assertEqual(positional, idx_args)
+        with self.subTest('lasts'):
+            kw_args, idx_args = arguments.parse(
+                args, reduce_values=arguments.pick_last_value)
+            self.assertEqual(lasts, kw_args)
+            self.assertEqual(positional, idx_args)
+        with self.subTest('unwrapped'):
+            kw_args, idx_args = arguments.parse(
+                args, reduce_values=arguments.unwrap_single_values)
+            self.assertEqual(unwrapped, kw_args)
+            self.assertEqual(positional, idx_args)
