@@ -136,3 +136,15 @@ def log_runtime_environment(
             # Invalid key or value.  Just skip to the next one.
             continue
         logger.log(level, message, function())
+
+# Names of logging levels
+level_names = {
+    'CRITICAL',
+    'FATAL',
+    'ERROR',
+    'WARN',
+    'WARNING',
+    'INFO',
+    'DEBUG',
+    'NOTSET',
+}
