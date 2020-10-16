@@ -16,10 +16,18 @@ import re
 long_option_pattern = re.compile(r'--([^=\s]+)(?:\s*=\s*(.*))?')
 
 
+# A unique object that is not `None`.  Float values are not cached:
+# `float('nan') is float('nan')` -> `False`.
+_Unset = float('nan')
+
+
 def parse(
         args,
         kv_pattern=long_option_pattern,
         value_parser=None,
+        value_if_unspecified=True,
+        unspecified_values=(),
+        args_separator='--',
         reduce_values=None,
 ):
     """
@@ -40,12 +48,12 @@ def parse(
     consuming the following value.  All other tokens are treated as
     positional arguments.  For example, the following tokens
 
-        --flag --key val1 pos1 --key=val2 --flag= pos2 --flag
+        --flag --key val1 pos1 --key=val2 --flag= pos2 --flag -- --pos3
 
     are parsed into the following keyword and positional arguments
 
-        {'flag': [None, '', None], 'key': ['val1', 'val2']}
-        ['pos1', 'pos2']
+        {'flag': [True, True, True], 'key': ['val1', 'val2']}
+        ['pos1', 'pos2', '--pos3']
 
     `kv_pattern`: re.Pattern
 
@@ -76,25 +84,40 @@ def parse(
     # Process each argument.  Use a simple state machine for keywords
     # awaiting values to allow `args` to be an iterable and to avoid
     # repeating code to check if an argument is a keyword.
+    keys_enabled = True
     key_awaits_value = None
     for arg in args:
-        # Track the presence of key and value
+        # Track the presence of key and value.  `None` is a valid value
+        # so use `_Unset` as the sentinel instead.
         key = None
-        val = None
-        # Is this argument a keyword?
+        val = _Unset
+        # Handle the "only arguments hereafter" separator
+        if arg == args_separator:
+            keys_enabled = False
+            # Clear the arguments separator so it is no longer
+            # recognized and subsequent occurrences will just be treated
+            # as a plain argument
+            args_separator = float('nan') # Nothing compares equal
+            continue
+        # Parse keyword arguments.  Attempt the match regardless of
+        # `keys_enabled` to keep the branching structure flatter.
         match = kv_pattern.fullmatch(arg)
-        # This argument is a keyword
-        if match is not None:
+        if keys_enabled and match is not None:
             key, val = match.groups()
+            if val is None:
+                val = _Unset
         else:
             val = arg
-        # Parse the value (if any)
-        if value_parser is not None and val is not None:
+        # Replace "unspecified" values
+        if val in unspecified_values:
+            val = value_if_unspecified
+        # Otherwise parse the value (if any)
+        elif value_parser is not None and val is not _Unset:
             val = value_parser(val)
         # Value argument
         if key is None:
             # Value argument for previous key
-            if key_awaits_value is not None:
+            if keys_enabled and key_awaits_value is not None:
                 kw_args[key_awaits_value].append(val)
                 key_awaits_value = None
             # Order argument
@@ -105,16 +128,16 @@ def parse(
             # If there is a key awaiting a value then it doesn't get one
             # because this is already another key
             if key_awaits_value is not None:
-                kw_args[key_awaits_value].append(None)
+                kw_args[key_awaits_value].append(value_if_unspecified)
                 key_awaits_value = None
             # Was a value given or is it in the next arg?
-            if val is None:
+            if val is _Unset:
                 key_awaits_value = key
             else:
                 kw_args[key].append(val)
-    # Give a null value to a trailing key
-    if key_awaits_value:
-        kw_args[key_awaits_value].append(None)
+    # Give the default value to a trailing key
+    if key_awaits_value is not None:
+        kw_args[key_awaits_value].append(value_if_unspecified)
         key_awaits_value = None
     # Reduce multiple values if requested
     if reduce_values is not None:

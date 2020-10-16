@@ -53,9 +53,9 @@ class ParseTest(unittest.TestCase):
     def test_flags(self):
         args = ['--flag1', '--flag2', '--flag3']
         keys_values = {
-            'flag1': [None],
-            'flag2': [None],
-            'flag3': [None],
+            'flag1': [True],
+            'flag2': [True],
+            'flag3': [True],
         }
         kw_args, idx_args = arguments.parse(args)
         self.assertEqual(keys_values, kw_args)
@@ -66,8 +66,8 @@ class ParseTest(unittest.TestCase):
             '--f', '--f', '--k', 'v', '--k', '--f', '--k', 'v', '--k=v',
         ]
         keys_values = {
-            'f': [None, None, None],
-            'k': ['v', None, 'v', 'v'],
+            'f': [True, True, True],
+            'k': ['v', True, 'v', 'v'],
         }
         kw_args, idx_args = arguments.parse(args)
         self.assertEqual(keys_values, kw_args)
@@ -80,8 +80,8 @@ class ParseTest(unittest.TestCase):
             'v5', '--f2',
         ]
         keys_values = {
-            'f1': [None],
-            'f2': [None, None],
+            'f1': [True],
+            'f2': [True, True],
             'k1': ['v1', 'v4', 'v5'],
             'k2': ['v2'],
             'k3': ['v3'],
@@ -111,14 +111,53 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(keys_values, kw_args)
         self.assertEqual(positional, idx_args)
 
+    def test_specified_none_values(self):
+        args = ['--a=none', 'none', '--b', 'none', 'none']
+        keys_vals = {'a': [None], 'b': [None]}
+        positional = [None, None]
+        kw_args, idx_args = arguments.parse(
+            args, value_parser=lambda s: parse.atom_err(s, s)[0])
+        self.assertEqual(keys_vals, kw_args)
+        self.assertEqual(positional, idx_args)
+
+    def test_value_if_unspecified(self):
+        args = ['--a', '--b', '--a',]
+        dflt = [str(hash(tuple(args)))]
+        keys_vals = {'a': [dflt, dflt], 'b': [dflt]}
+        positional = []
+        kw_args, idx_args = arguments.parse(
+            args, value_if_unspecified=dflt)
+        self.assertEqual(keys_vals, kw_args)
+        self.assertEqual(positional, idx_args)
+
+    def test_unspecified_values(self):
+        args = ['--a=', '--b', 'nothing', 'none', 'nil']
+        dflt = [str(hash(tuple(args)))]
+        keys_vals = {'a': [dflt], 'b': [dflt]}
+        positional = [dflt, dflt]
+        kw_args, idx_args = arguments.parse(
+            args,
+            unspecified_values={'', 'nil', 'none', 'nothing'},
+            value_if_unspecified=dflt)
+        self.assertEqual(keys_vals, kw_args)
+        self.assertEqual(positional, idx_args)
+
+    def test_args_separator(self):
+        args = ['--a', '--', '--b', '--', '--c']
+        keys_vals = {'a': [True]}
+        positional = ['--b', '--', '--c']
+        kw_args, idx_args = arguments.parse(args)
+        self.assertEqual(keys_vals, kw_args)
+        self.assertEqual(positional, idx_args)
+
     def test_reduce_values(self):
         args = [
             '--0', '--1', '1', '--2', 'y', '--2=n',
             '--3', 'a', '--3=b', '--3', 'c',
         ]
-        firsts = {'0': None, '1': '1', '2': 'y', '3': 'a'}
-        lasts = {'0': None, '1': '1', '2': 'n', '3': 'c'}
-        unwrapped = {'0': None, '1': '1',
+        firsts = {'0': True, '1': '1', '2': 'y', '3': 'a'}
+        lasts = {'0': True, '1': '1', '2': 'n', '3': 'c'}
+        unwrapped = {'0': True, '1': '1',
                      '2': ['y', 'n'], '3': ['a', 'b', 'c']}
         positional = []
         with self.subTest('firsts'):
