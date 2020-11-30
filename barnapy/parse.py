@@ -16,7 +16,7 @@ Functions that do not use Go style return a sentinel value.
 Requires Python >= 3.4 for `re.fullmatch`.
 """
 
-# Copyright (c) 2015 - 2019 Aubrey Barnard.
+# Copyright (c) 2015-2020 Aubrey Barnard.
 #
 # This is free software released under the MIT license.  See LICENSE for
 # details.
@@ -31,7 +31,7 @@ import re
 # Errors
 
 
-class ParseError(Exception): # TODO subclass FitamordError
+class ParseError(Exception):
 
     def __init__(
             self,
@@ -181,6 +181,16 @@ can be distinguished.
 """
 inf_nan_pattern = re.compile(
     r'[+-]?(?:inf(?:inity)?|nan)', re.IGNORECASE) # TODO support Yaml syntax, e.g. "-.nan"
+
+
+# Ranges
+
+"""Pattern that matches integer range."""
+integer_range_pattern = re.compile('({0}):({0})'.format(integer_pattern.pattern))
+
+"""Pattern that matches float range."""
+float_range_pattern = re.compile('({0}):({0})'.format(float_pattern.pattern))
+
 
 # Dates and times
 

@@ -137,3 +137,41 @@ class NumberPatternsTest(unittest.TestCase):
             parse.float_pattern, self.not_flt_strs,
             self.int_strs, self.not_int_strs,
             self.inf_strs, self.nan_strs)
+
+
+class RangePatternsTest(unittest.TestCase):
+
+    def test_integer_range(self):
+        # Ranges
+        texts = ['0:0', '-1:+1', '+1:-1',
+                 '-{0}:+{0}'.format('0123456789')]
+        for txt in texts:
+            with self.subTest(txt):
+                match = parse.integer_range_pattern.fullmatch(txt)
+                self.assertIsNotNone(match)
+                self.assertEqual(txt.split(':'), list(match.groups()))
+        # Not ranges
+        texts = ['0 : 0', '0.1:1.0', 'a:b', '-:+', ':', ':0', '0:',
+                 '1::1', '1:1:1', '-{0}:+{0}.'.format('0123456789')]
+        for txt in texts:
+            with self.subTest(txt):
+                match = parse.integer_range_pattern.fullmatch(txt)
+                self.assertIsNone(match)
+
+    def test_float_range(self):
+        # Ranges
+        texts = ['.0:0.', '1.:.1', '-1.0:+1.0', '-1e-0:+1e+0',
+                 '-{0}.{0}e-{0}:+{0}.{0}e+{0}'.format('0123456789')]
+        for txt in texts:
+            with self.subTest(txt):
+                match = parse.float_range_pattern.fullmatch(txt)
+                self.assertIsNotNone(match)
+                self.assertEqual(txt.split(':'), list(match.groups()))
+        # Not ranges
+        texts = ['.0 : 0.', '1:1', 'e:e', '-:+', ':', ':.0', '0.:',
+                 '1.0::0.1', '0.1:1.1:1.0',
+                 '-{0}.{0}e-{0}:+{0}.{0}e+{0}.'.format('0123456789')]
+        for txt in texts:
+            with self.subTest(txt):
+                match = parse.float_range_pattern.fullmatch(txt)
+                self.assertIsNone(match)
