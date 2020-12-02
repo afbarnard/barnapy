@@ -186,10 +186,10 @@ inf_nan_pattern = re.compile(
 # Ranges
 
 """Pattern that matches integer range."""
-integer_range_pattern = re.compile('({0}):({0})'.format(integer_pattern.pattern))
+integer_range_pattern = re.compile('({0})?:({0})?'.format(integer_pattern.pattern))
 
 """Pattern that matches float range."""
-float_range_pattern = re.compile('({0}):({0})'.format(float_pattern.pattern))
+float_range_pattern = re.compile('({0})?:({0})?'.format(float_pattern.pattern))
 
 
 # Dates and times
