@@ -72,11 +72,11 @@ class Graph:
     def has_weight(self, node1, node2):
         return self._weight_store.has_weight(node1, node2)
 
-    def number_nodes(self):
-        return self._node_store.number_nodes()
+    def n_nodes(self):
+        return self._node_store.n_nodes()
 
-    def number_edges(self):
-        return self._edge_store.number_edges()
+    def n_edges(self):
+        return self._edge_store.n_edges()
 
     def nodes(self):
         return self._node_store.nodes()
@@ -164,7 +164,7 @@ class SetNodeStore:
     def has_node(self, node):
         return node in self._nodes
 
-    def number_nodes(self):
+    def n_nodes(self):
         return len(self._nodes)
 
     def nodes(self):
@@ -185,7 +185,7 @@ class DictSetEdgeStore:
     def has_edge(self, node1, node2):
         return node1 in self._parents and node2 in self._parents[node1]
 
-    def number_edges(self):
+    def n_edges(self):
         return sum(len(children) for children in self._parents.values())
 
     def edges(self):
@@ -243,9 +243,9 @@ class DictWeightStore:
 # Algorithms
 
 def visit_breadth_first(graph, start):
-    """Generate all nodes reachable from the given node in breadth-first
+    """
+    Generate all nodes reachable from the given node in breadth-first
     manner.
-
     """
     # Queue of unvisited nodes.  Seed with the neighbors of the start so
     # as not to yield the start unless it is reachable from itself.
@@ -267,10 +267,10 @@ def visit_breadth_first(graph, start):
 
 
 def path_exists_bfs(graph, start, end):
-    """Whether a path from start to end exists in the given graph.
+    """
+    Whether a path from start to end exists in the given graph.
 
     Uses breadth-first search.
-
     """
     for node in visit_breadth_first(graph, start):
         if node == end:
