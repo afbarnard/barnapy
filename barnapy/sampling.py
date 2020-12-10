@@ -1,8 +1,11 @@
-"""Sampling algorithms
+"""Sampling algorithms."""
 
-Copyright (c) 2016 Aubrey Barnard.  This is free software released under
-the MIT license.  See LICENSE for details.
-"""
+
+# Copyright (c) 2015-2016, 2020 Aubrey Barnard.
+#
+# This is free, open software released under the MIT license.  See
+# `LICENSE` for details.
+
 
 import itertools as itools
 import random
@@ -58,3 +61,55 @@ def reservoir_sample_in_order(items, sample_size, prng=random):
     sample.sort()
     # Return original items (the second object of each pair)
     return [pair[1] for pair in sample]
+
+
+def repeatedly_call(func, n_calls=None): # TODO move somewhere more appropriate
+    """
+    Repeatedly call the given function and yield its return value.
+
+    Like `itertools.repeat` but makes calls instead of just returning an
+    object.
+    """
+    call_idx = 0
+    while n_calls is None or call_idx < n_calls:
+        yield func()
+        call_idx += 1
+
+
+def rejection_sample( # TODO make into object that can track sampling progress
+        generate_sample,
+        accept_sample,
+        n_samples=None,
+        max_tries=None,
+):
+    samples = None
+    if callable(generate_sample):
+        samples = repeatedly_call(generate_sample)
+    elif hasattr(generate_sample, '__iter__'):
+        samples = generate_sample
+    else:
+        raise ValueError(
+            f'Not a callable or iterable: {generate_sample}')
+    sample_count = 0
+    n_tries = 0
+    # Generate samples indefinitely
+    for sample in samples:
+        # See if this sample is acceptable
+        if accept_sample(sample):
+            # Count the sample and yield it
+            sample_count += 1
+            # Have the counts reflect the sample at this point
+            yield sample
+            # Quit if generated enough samples
+            if n_samples is not None and sample_count >= n_samples:
+                return
+            # Reset the number of tries
+            n_tries = 0
+        else:
+            # The sample was rejected.  Try again.
+            n_tries += 1
+            # Quit if tried too many times
+            if max_tries is not None and n_tries >= max_tries:
+                raise Exception( # TODO have a proper exception
+                    'Rejection sampling failed: too many tries')
+    # TODO log warning that sample generator ran out before the desired number of samples was reached
