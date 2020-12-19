@@ -22,6 +22,7 @@ Requires Python >= 3.4 for `re.fullmatch`.
 # details.
 
 
+import ast
 import builtins
 import enum
 import datetime
@@ -669,6 +670,17 @@ def atom_err(text, default=None, allow_inf_nan=True):
     # Whitespace, strings, or non-atoms
     else:
         return default, ParseError('Cannot parse an atom from', text)
+
+
+def pyliteral_err(text, default=None):
+    """
+    Parse a Python literal (anything recognized by `ast.literal_eval`)
+    from the given text.
+    """
+    try:
+        return ast.literal_eval(text), None
+    except (SyntaxError, ValueError) as e:
+        return default, e
 
 
 # Dates and times

@@ -12,6 +12,8 @@ APIs.
 import collections
 import re
 
+from . import parse as parselib
+
 
 long_option_pattern = re.compile(r'--([^=\s]+)(?:\s*=\s*(.*))?')
 
@@ -66,7 +68,7 @@ def parse(
 
         A function that converts each value argument into a Python
         value, if possible, and otherwise just returns the original
-        argument.
+        argument.  See `parse_literal`.
 
     `reduce_values`: f(key: str, vals: list) -> value
 
@@ -170,6 +172,17 @@ def unwrap_single_values(key, vals):
         return vals[0]
     else:
         return vals
+
+
+def parse_literal(text):
+    """
+    Parse the given text as a Python literal, if possible.  Otherwise
+    just return the text.  Useful as a "value parser" for `parse`.
+
+    A Python literal is anything recognized by `ast.literal_eval`.
+    """
+    obj, err = parselib.pyliteral_err(text)
+    return obj if err is None else text
 
 
 # TODO object to represent keyword and positonal arguments
