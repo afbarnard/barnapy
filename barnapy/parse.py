@@ -161,6 +161,9 @@ comment_hash_single_pattern = re.compile(
 """Pattern that matches integers"""
 integer_pattern = re.compile(r'[+-]?\d+')
 
+"""Pattern that matches fractions (rationals)"""
+fraction_pattern = re.compile(r'[-+]?\d+/\d+')
+
 # The following float regex is optimized to avoid backtracking by
 # repeating the exponent regex
 _exponent_regex = r'[eE][+-]?\d+'

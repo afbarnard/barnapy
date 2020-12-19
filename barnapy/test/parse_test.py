@@ -6,6 +6,7 @@
 # `LICENSE` for details.
 
 
+import fractions
 import itertools as itools
 import math
 import unittest
@@ -27,6 +28,23 @@ class NumberPatternsTest(unittest.TestCase):
         f'{sign}{num}'
         for sign in ('', '+', '-')
         for num in ('', 'e', '123abc')
+    ]
+
+    # Fractions
+    frac_strs = [
+        f'{sign}{num1}/{num2}'
+        for sign in ('', '+', '-')
+        # Basic integers with leading and trailing zeros
+        for num1 in ('0', '1', '001', '100', '123456789')
+        for num2 in ('1', '001', '100', '123456789')
+    ]
+
+    not_frac_strs = [
+        f'{sign}{num1}/{num2}'
+        for sign in ('', '+', '-')
+        for num1 in ('', '1', 'e', '123abc')
+        for num2 in ('', '1', '+1', '-1', 'e', '123abc')
+        if num1 != '1' or num2 != '1'
     ]
 
     # Floats
@@ -97,6 +115,9 @@ class NumberPatternsTest(unittest.TestCase):
     def test_int_strs(self):
         self._test_python_parses(int, self.int_strs)
 
+    def test_frac_strs(self):
+        self._test_python_parses(fractions.Fraction, self.frac_strs)
+
     def test_flt_strs(self):
         self._test_python_parses(float, self.flt_strs)
 
@@ -126,6 +147,17 @@ class NumberPatternsTest(unittest.TestCase):
     def test_not_integer(self):
         self._test_non_matches(
             parse.integer_pattern, self.not_int_strs,
+            self.frac_strs, self.not_frac_strs,
+            self.flt_strs, self.not_flt_strs,
+            self.inf_strs, self.nan_strs)
+
+    def test_fraction(self):
+        self._test_matches(parse.fraction_pattern, self.frac_strs)
+
+    def test_not_fraction(self):
+        self._test_non_matches(
+            parse.fraction_pattern, self.not_frac_strs,
+            self.int_strs, self.not_int_strs,
             self.flt_strs, self.not_flt_strs,
             self.inf_strs, self.nan_strs)
 
@@ -135,6 +167,7 @@ class NumberPatternsTest(unittest.TestCase):
     def test_not_float(self):
         self._test_non_matches(
             parse.float_pattern, self.not_flt_strs,
+            self.frac_strs, self.not_frac_strs,
             self.int_strs, self.not_int_strs,
             self.inf_strs, self.nan_strs)
 
