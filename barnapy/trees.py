@@ -85,9 +85,11 @@ class RadixTree:
         """
         # Create a unique sentinel value
         self._sentinel = object()
-        self._empty_key_value = self._sentinel
         # Construct an empty tree
-        self.clear()
+        self._n_items = 0
+        self._root = {} # TODO replace with a non-hashing associative array
+        self._empty_key = None
+        self._empty_key_value = self._sentinel
         # Add the given key-value pairs
         self.update(mapping, **kwargs)
 
@@ -190,6 +192,7 @@ class RadixTree:
             # Key match, entry exists
             if diff_idx == len(key):
                 if diff_idx == 0:
+                    self._empty_key = key
                     self._empty_key_value = value
                 else:
                     key_ext, _, children = entry
@@ -257,8 +260,35 @@ class RadixTree:
         self._n_items -= 1
         return (True, value) # Your favorite neighborhood hardware store?
 
-    def _visit_items(self):
-        yield from () # TODO
+    def _visit_items(self, sort=False):
+        if self._empty_key_value is not self._sentinel:
+            yield (self._empty_key, self._empty_key_value)
+        kv_pairs = self._root.items()
+        if sort:
+            kv_pairs = sorted(kv_pairs, key=lambda kv: (kv[0], kv[1][0]))
+        node_stack = [iter(kv_pairs)]
+        key_stack = []
+        while len(node_stack) > 0:
+            next_item = next(node_stack[-1], None)
+            if next_item is None:
+                del node_stack[-1]
+                if len(key_stack) > 0:
+                    del key_stack[-1]
+                continue
+            (key_piece, (key_ext, value, children)) = next_item
+            if len(key_stack) > 0:
+                key = key_stack[-1] + key_piece + key_ext
+            else:
+                key = key_piece + key_ext
+            if value is not self._sentinel:
+                yield (key, value)
+            if children:
+                kv_pairs = children.items()
+                if sort:
+                    kv_pairs = sorted(
+                        kv_pairs, key=lambda kv: (kv[0], kv[1][0]))
+                node_stack.append(iter(kv_pairs))
+                key_stack.append(key)
 
     # Read
 
@@ -294,8 +324,8 @@ class RadixTree:
         for (_, value) in self._visit_items():
             yield value
 
-    def items(self):
-        return self._visit_items()
+    def items(self, sort=False):
+        return self._visit_items(sort=sort)
 
     # Write
 
@@ -306,14 +336,13 @@ class RadixTree:
         if mapping is not None:
             for (key, value) in mapping:
                 self.__setitem__(key, value)
-        for (key, value) in kwargs:
+        for (key, value) in kwargs.items():
             self.__setitem__(key, value)
 
     def __delitem__(self, key):
-        (found, *_) = self._delete(key)
+        found, *_ = self._delete(key)
         if not found:
             raise KeyError(key)
 
     def clear(self):
-        self._n_items = 0
-        self._root = {} # TODO replace
+        self.__init__()
