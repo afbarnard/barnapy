@@ -191,3 +191,43 @@ class ListedPairsMapTest(unittest.TestCase, GenericMapTest):
 
     def construct_map(self, mapping=None, **kwargs):
         return maps.ListedPairsMap(mapping, **kwargs)
+
+
+class SortedPairsMapTest(unittest.TestCase, GenericMapTest):
+
+    def kv_pairs(self):
+        return [
+            ('a', 'b'),
+            ('b', 'a'),
+            ('0', 1),
+            ('1', 0),
+            ('nun', 'unu'),
+            ('unu', 'nun'),
+            ('None', None),
+            ('object()', object()),
+            ('badger', 'Bill'),
+            ('bad', 'gerbil'),
+        ]
+
+    def construct_map(self, mapping=None, **kwargs):
+        return maps.SortedPairsMap(mapping, **kwargs)
+
+
+class ArrayMapTest(unittest.TestCase, GenericMapTest):
+
+    def kv_pairs(self):
+        return [
+            (-97, 'a'),
+            (-98, 'b'),
+            (0, 1),
+            (-1, 0),
+            (-110, 'nun'),
+            (-117, 'unu'),
+            (-78, None),
+            (-111, object()),
+            (-2, 'badger Bill'),
+            (-3, 'bad gerbil'),
+        ]
+
+    def construct_map(self, mapping=None, **kwargs):
+        return maps.ArrayMap(key_lo=-127, size=128, mapping=mapping, **kwargs)

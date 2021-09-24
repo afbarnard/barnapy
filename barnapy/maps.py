@@ -207,16 +207,16 @@ class SortedPairsMap:
         return found
 
     def __getitem__(self, key):
-        found, value = self._lookup(key)
+        found, idx = self._lookup(key)
         if found:
-            return value
+            return self._vals[idx]
         else:
             raise KeyError(key)
 
     def get(self, key, default=None):
-        found, value = self._lookup(key)
+        found, idx = self._lookup(key)
         if found:
-            return value
+            return self._vals[idx]
         else:
             return default
 
@@ -333,16 +333,16 @@ class ArrayMap:
         return found
 
     def __getitem__(self, key):
-        found, value = self._lookup(key)
+        found, idx = self._lookup(key)
         if found:
-            return value
+            return self._vals[idx]
         else:
             raise KeyError(key)
 
     def get(self, key, default=None):
-        found, value = self._lookup(key)
+        found, idx = self._lookup(key)
         if found:
-            return value
+            return self._vals[idx]
         else:
             return default
 
