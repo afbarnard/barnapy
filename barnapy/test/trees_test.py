@@ -193,4 +193,36 @@ class RadixTreeTest(unittest.TestCase):
         ]
         self._test__lookup_items(rt, kvs)
 
-    # TODO delete
+    def test__delete(self):
+        # Scenarios:
+        # * delete nonexistent
+        # * delete leaf
+        # * delete internal (split) node (key is prefix of other keys)
+        # * delete root
+        kvs = [
+            ('abcd', 'efgh'), # Branch 1
+            ('ab', 'ba'),     # Split
+            ('abba', 'baab'), # Branch 2
+            ('z', 'a'),       # Other at root
+            ((), ()),         # Empty key
+        ]
+        rt = trees.RadixTree(kvs)
+        ks2vs = dict(kvs)
+        # Delete nonexistent
+        with self.subTest(f"_delete('fa')"):
+            existed, old_val = rt._delete('fa')
+            self.assertFalse(existed)
+            self.assertIsNone(old_val)
+            self.assertEqual(len(ks2vs), len(rt))
+        # Delete existent until empty
+        for (key, val) in kvs:
+            with self.subTest(f'_delete({key})'):
+                existed, old_val = rt._delete(key)
+                self.assertTrue(existed)
+                self.assertEqual(ks2vs[key], old_val)
+                del ks2vs[key]
+                self.assertEqual(len(ks2vs), len(rt))
+        # Check that internal structure is empty
+        self.assertEqual(0, len(rt._root))
+        self.assertIsNone(rt._empty_key)
+        self.assertEqual(rt._sentinel, rt._empty_key_value)

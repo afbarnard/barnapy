@@ -16,6 +16,9 @@ class RadixTree:
     map indexable keys to values without hashing.
     """
 
+    # Create a unique sentinel value to be used by all instances
+    _sentinel = object()
+
     # Analysis
     #
     # There are several ways a lookup key can compare against a stored
@@ -83,8 +86,6 @@ class RadixTree:
         This implementation naïvely use `dict`s for nodes for the time
         being.
         """
-        # Create a unique sentinel value
-        self._sentinel = object()
         # Construct an empty tree
         self._n_items = 0
         self._root = {} # TODO replace with a non-hashing associative array
@@ -251,12 +252,31 @@ class RadixTree:
         Return whether the key previously existed and its previous value
         (or `None`, if it did not previously exist).
         """
-        found, old_value, node, node_key, entry, *_ = self._lookup(key)
+        found, value, path, node_idx, diff_idx = self._lookup(key)
         if not found:
             return (False, None)
-        key_ext, value, child_node = entry
-        # Just remove the value for now # TODO remove tree structure that's no longer necessary
-        node[node_key] = (key_ext, self._sentinel, child_node)
+        # Delete empty key and value
+        if diff_idx == 0: # diff_idx == len(key) when found
+            self._empty_key = None
+            self._empty_key_value = self._sentinel
+        else:
+            (node, node_key, (key_ext, _, child_node)) = path[-1]
+            # Delete value at branch (internal node)
+            if child_node is not None and len(child_node) > 0:
+                node[node_key] = (key_ext, self._sentinel, child_node)
+                # TODO? remove this node (seems like a lot of work for questionable benefit)
+            # Delete value at leaf and any parents that become empty
+            else:
+                del node[node_key]
+                del path[-1]
+                while path:
+                    (node, node_key, (key_ext, _, child_node)) = path[-1]
+                    if child_node is None or len(child_node) == 0:
+                        del node[node_key]
+                        del path[-1]
+                    else:
+                        break
+        # Decrease the size for the item that was deleted
         self._n_items -= 1
         return (True, value) # Your favorite neighborhood hardware store?
 
