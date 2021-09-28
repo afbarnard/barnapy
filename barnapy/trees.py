@@ -76,6 +76,8 @@ class RadixTree:
     # to `value`.  If `children` is not None, then there exist children
     # with values mapped from extensions of the current key prefix.
 
+    # TODO support lazy keys with unknown lengths
+
     # Core operations
 
     def __init__(self, mapping=None, **kwargs):
@@ -94,8 +96,7 @@ class RadixTree:
         # Add the given key-value pairs
         self.update(mapping, **kwargs)
 
-    def _lookup(self, key) -> (
-            bool, object, dict, object, tuple, int, int, int):
+    def _lookup(self, key) -> (bool, object, list, int, int):
         """
         Look up the key and return a tuple describing the situation.
 
@@ -106,16 +107,20 @@ class RadixTree:
         * value: the value the given key maps to, if any; if the key is
           not found, this is `None`
 
-        * node: node that does / would contain the sought key-value
-          pair; node to insert into (may be None in the case that a
-          lookup key extends a stored key); a node is a mapping of
-          key[i] to entries describing keys, values, and children
+        * path: stack that describes the path from the root to the last
+          node looked up where each item in the stack is a (node,
+          node_key, entry) tuple
 
-        * node key: key[i], the element of the given key that is the key
-          for the mapping in the returned node; it may or may not exist
-          in the node (which is described by `found`)
+          * node: node that does / would contain the sought key-value
+            pair; node to insert into (may be None in the case that a
+            lookup key extends a stored key); a node is a mapping of
+            key[i] to entries describing keys, values, and children
 
-        * entry: (key extension, value, child node) tuple
+          * node key: key[i], the element of the given key that is the
+            key for the mapping in the returned node; it may or may not
+            exist in the node (which is described by `found`)
+
+          * entry: (key extension, value, child node) tuple
 
         * node index: index in key at which the returned node starts,
           the i in key[i] above
