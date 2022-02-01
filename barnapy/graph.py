@@ -1,7 +1,9 @@
 """Basic graph implementation"""
 
-# Copyright (c) 2017 Aubrey Barnard.  This is free software released
-# under the MIT license.  See LICENSE for details.
+# Copyright (c) 2017, 2022 Aubrey Barnard.
+#
+# This is free, open software released under the MIT license.  See
+# `LICENSE` for details.
 
 
 import collections
@@ -16,15 +18,15 @@ class Graph:
             weight_store=None,
             default_weight=None,
             ):
-        self._node_store = (node_store
-                            if node_store is not None
-                            else SetNodeStore())
-        self._edge_store = (edge_store
-                            if edge_store is not None
-                            else DictSetEdgeStore())
-        self._weight_store = (weight_store
-                              if weight_store is not None
-                              else DictWeightStore())
+        if node_store is None:
+            self._node_store = DictSetNodeEdgeStore()
+        if edge_store is None:
+            if isinstance(self._node_store, DictSetNodeEdgeStore):
+                self._edge_store = self._node_store
+            else:
+                self._edge_store = DictSetEdgeStore()
+        if weight_store is None:
+            self._weight_store = DictWeightStore()
         self._default_weight = default_weight
 
     @staticmethod
@@ -194,9 +196,11 @@ class DictSetEdgeStore:
                 yield (parent, child)
 
     def add_edge(self, node1, node2):
-        if node1 not in self._parents:
-            self._parents[node1] = set()
-        self._parents[node1].add(node2)
+        children = self._parents.get(node1)
+        if children is None:
+            children = set()
+            self._parents[node1] = children
+        children.add(node2)
 
     def del_edge(self, node1, node2):
         self._parents[node1].remove(node2)
@@ -219,6 +223,74 @@ class DictSetEdgeStore:
 
     def in_neighbors(self, node):
         return (parent for parent, children in self._parents.items()
+                if node in children)
+
+
+class DictSetNodeEdgeStore:
+
+    def __init__(self):
+        self._nodes2childrens = {}
+
+    # Node API
+
+    def has_node(self, node):
+        return node in self._nodes2childrens
+
+    def n_nodes(self):
+        return len(self._nodes2childrens)
+
+    def nodes(self):
+        return self._nodes2childrens.keys()
+
+    def add_node(self, node):
+        # Only add the node if it hasn't already been added
+        if node not in self._nodes2childrens:
+            self._nodes2childrens[node] = set()
+
+    def del_node(self, node):
+        self._nodes2childrens.pop(node, None)
+
+    # Edge API
+
+    def has_edge(self, node1, node2):
+        children = self._nodes2childrens.get(node1)
+        if children is None:
+            return False
+        return node2 in children
+
+    def n_edges(self):
+        return sum(len(children) for children in self._nodes2childrens.values())
+
+    def edges(self):
+        for node, children in self._nodes2childrens.items():
+            for child in children:
+                yield (node, child)
+
+    def add_edge(self, node1, node2):
+        children = self._nodes2childrens.get(node1)
+        if children is None:
+            children = set()
+            self._nodes2childrens[node1] = children
+        children.add(node2)
+
+    def del_edge(self, node1, node2):
+        children = self._nodes2childrens.get(node1)
+        if children is None:
+            return
+        children.discard(node2)
+
+    def out_degree(self, node):
+        return len(self._nodes2childrens[node])
+
+    def in_degree(self, node):
+        return sum(int(node in children)
+                   for children in self._nodes2childrens.values())
+
+    def out_neighbors(self, node):
+        return iter(self._nodes2childrens[node])
+
+    def in_neighbors(self, node):
+        return (parent for (parent, children) in self._nodes2childrens.items()
                 if node in children)
 
 
