@@ -154,6 +154,8 @@ class Graph:
     def out_neighbors(self, node):
         return self._edge_store.out_neighbors(node)
 
+    neighbors = out_neighbors
+
     def in_neighbors(self, node):
         return self._edge_store.in_neighbors(node)
 
