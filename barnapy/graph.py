@@ -11,6 +11,8 @@ import collections
 
 class Graph:
 
+    # Construction and IO
+
     def __init__(
             self,
             node_store=None,
@@ -65,14 +67,47 @@ class Graph:
         for edge_weight in edges_weights:
             yield edge_weight
 
+    def subgraph(self, nodes=None, edges=None):
+        pass
+
+    # Read-only query API
+
     def has_node(self, node):
         return self._node_store.has_node(node)
 
     def has_edge(self, node1, node2):
         return self._edge_store.has_edge(node1, node2)
 
+    def has_path(self, nodes, closed=False):
+        """
+        Return whether the given sequence of nodes is a path in this graph.
+
+        `nodes` is iterated at most once.
+        """
+        node_iter = iter(nodes)
+        init_node = next(node_iter, None)
+        if init_node is None:
+            return True # Every graph contains the empty path
+        if not self.has_node(init_node):
+            return False
+        prev_node = init_node
+        next_node = next(node_iter, None)
+        while next_node is not None:
+            if not self.has_edge(prev_node, next_node):
+                return False
+            prev_node = next_node
+            next_node = next(node_iter, None)
+        if closed:
+            return self.has_edge(prev_node, init_node)
+        return True
+
+    def has_cycle(self, nodes):
+        return self.has_path(nodes, closed=True)
+
     def has_weight(self, node1, node2):
         return self._weight_store.has_weight(node1, node2)
+
+    #def has_property(self): # TODO? how distinguish node properties from edge properties?
 
     def n_nodes(self):
         return self._node_store.n_nodes()
@@ -93,6 +128,30 @@ class Graph:
     def edges_weights(self):
         for edge in self.edges():
             yield (edge, self.weight(*edge))
+
+    def out_degree(self, node):
+        return self._edge_store.out_degree(node)
+
+    def out_neighbors(self, node):
+        return self._edge_store.out_neighbors(node)
+
+    neighbors = out_neighbors
+
+    def out_neighbors_weights(self, node):
+        return (nbr, self.weight(node, nbr)) for nbr in self.out_neighbors(node)
+
+    neighbors_weights = out_neighbors_weights
+
+    def in_degree(self, node):
+        return self._edge_store.in_degree(node)
+
+    def in_neighbors(self, node):
+        return self._edge_store.in_neighbors(node)
+
+    def in_neighbors_weights(self, node):
+        return (nbr, self.weight(nbr, node)) for nbr in self.in_neighbors(node)
+
+    # Modification API
 
     def add_node(self, node):
         self._node_store.add_node(node)
@@ -118,6 +177,19 @@ class Graph:
     def add_edges(self, edges):
         for edge in edges:
             self.add_edge(*edge)
+
+    def add_path(self, nodes, closed=False):
+        node_iter = iter(nodes)
+        init_node = next(node_iter, None)
+        if init_node is None:
+            return
+        prev_node = init_node
+        next_node = next(node_iter, None)
+        while next_node is not None:
+            self.add_edge(prev_node, next_node)
+            prev_node = next_node
+        if closed:
+            self.add_edge(prev_node, init_node)
 
     def del_node(self, node):
         # Delete edges between this node and its neighbors
@@ -145,19 +217,9 @@ class Graph:
         for edge in edges:
             self.del_edge(edge)
 
-    def out_degree(self, node):
-        return self._edge_store.out_degree(node)
-
-    def in_degree(self, node):
-        return self._edge_store.in_degree(node)
-
-    def out_neighbors(self, node):
-        return self._edge_store.out_neighbors(node)
-
-    neighbors = out_neighbors
-
-    def in_neighbors(self, node):
-        return self._edge_store.in_neighbors(node)
+    def del_path(self, nodes):
+        for node in nodes:
+            self.del_node(node)
 
 
 class SetNodeStore:
@@ -340,13 +402,40 @@ def visit_breadth_first(graph, start):
                 queue.append(neighbor)
 
 
-def path_exists_bfs(graph, start, end):
-    """
-    Whether a path from start to end exists in the given graph.
+def visit_depth_first(graph, start):
+    pass
 
-    Uses breadth-first search.
-    """
-    for node in visit_breadth_first(graph, start):
-        if node == end:
-            return True
-    return False
+
+def visit(graph, start, min_wgt=None, max_wgt=None, first='breadth'):
+    """assumes nonnegative weights"""
+    pass
+
+
+def shortest_path():
+    pass
+
+
+def shortest_paths_bds(graph, start, end, min_weight=None, max_weight=None):
+    """"""
+    # Path, nodes, queue for forward and reverse directions
+    (p, n, q) = range(3)
+    fwd_pnq = ([(start, 0)], {start: 0}, [(0, start, None)])
+    rev_pnq = ([(end, 0)], {end: 0}, [(0, end, None)])
+    # Start with the forward direction
+    one_pnq = fwd_pnq
+    oth_pnq = rev_pnq
+    while len(one_pnq[q]) > 0:
+        (dist, node, prev) = heapq.heappop(one_pnq[q])
+        if node in oth_pnq[n]:
+            yield
+        nbrs_wgts = (graph.out_neighbors_weights(node)
+                     if one_pnq is fwd_pnq
+                     else graph.in_neighbors_weights(node))
+        for (nbr, wgt) in nbrs_wgts:
+            nbr_dist = dist + wgt
+            if nbr_dist <= max_weight:
+                heapq.heappush(one_pnq[q], (nbr_dist, nbr, node))
+
+
+def all_cycles(graph):
+    pass
