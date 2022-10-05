@@ -1,6 +1,6 @@
 """Barnapy package definition and install configuration"""
 
-# Copyright (c) 2017, 2019 Aubrey Barnard.
+# Copyright (c) 2017, 2019, 2022 Aubrey Barnard.
 #
 # This is free software released under the MIT license.  See `LICENSE`
 # for details.
@@ -53,7 +53,7 @@ setuptools.setup(
     ],
 
     # Requirements
-    python_requires='>=3.4',
+    python_requires='>=3.7', # from __future__ import annotations
     install_requires=[], # No dependencies
 
     # API
