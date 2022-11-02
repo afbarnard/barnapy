@@ -7,6 +7,8 @@
 
 
 import collections
+import heapq
+import warnings
 
 
 class Graph:
@@ -314,7 +316,8 @@ class DictWeightStore:
         del self._edges_weights[node1, node2]
 
 
-# Algorithms
+# Algorithms #
+
 
 def visit_breadth_first(graph, start):
     """
@@ -350,3 +353,119 @@ def path_exists_bfs(graph, start, end):
         if node == end:
             return True
     return False
+
+
+## Shortest Paths ##
+
+
+def _check_excluded_nodes(nodes_label, nodes, excluded_nodes):
+    n_excluded = len(excluded_nodes.intersection(nodes))
+    if n_excluded == len(nodes):
+        raise ValueError(f'All {nodes_label} nodes are excluded')
+    elif n_excluded > 0:
+        warnings.warn(f'Some {nodes_label} nodes are excluded')
+
+
+def shortest_path_btw_sets(
+        graph,
+        begins,
+        ends,
+        distance=None,
+        excluded_nodes=None,
+        excluded_edges=None,
+        #is_ok_length=None, # TODO? only if it can work with backtracking
+):
+    """
+    Find a shortest path in a graph between the given sets of begin
+    nodes and end nodes.  Return the path as `([begin, ..., end], total
+    distance)` or `None` if no path exists.
+
+    This is an implementation of Dijkstra's algorithm that generalizes
+    it as much as possible without changing its structure or complexity.
+    Note that Dijkstra's algorithm does not work for finding a shortest
+    path from X to X (a shortest cycle) because that requires a
+    fundamentally more complex search.  However, one can find a shortest
+    cycle from X to X through neighbor Y by finding a shortest path from
+    X to Y when excluding edge X-Y.
+
+    `begins`: iterable[node]
+
+        Collection of nodes to begin with.
+
+    `ends`: iterable[node]
+
+        Collection of nodes to end with.
+
+    `distance`: callable(graph, node1, node2) -> distance >= 0 | None
+
+        Function to give the distance along each edge.  If `None`, the
+        distance of each edge is 1.
+
+    `excluded_nodes`: iterable[node] | None
+
+        Nodes to exclude from all paths.  Pretends the subgraph induced
+        by these nodes does not exist.
+
+    `excluded_edges`: iterable[(node, node)] | None
+
+        Edges to exclude from all paths.  Pretends the given edges do
+        not exist.
+    """
+    # Collect iterable arguments.  Filter out nodes not in the graph.
+    begs = [beg for beg in begins if graph.has_node(beg)]
+    ends = set(end for end in ends if graph.has_node(end))
+    visited = set() if excluded_nodes is None else set(excluded_nodes)
+    excl_edges = (set(tuple(e) for e in excluded_edges)
+                  if excluded_edges is not None else None)
+    # Treat no nodes and nodes not in the graph as having no path
+    if len(begs) == 0 or len(ends) == 0:
+        return None
+    # Sanity check the exclusions
+    _check_excluded_nodes('begin', begs, visited)
+    _check_excluded_nodes('end', ends, visited)
+    # Create a min priority queue for the shortest paths reached so far
+    queue = [(0, node) for node in begs]
+    # Shortest distance to each node and where it came from
+    shortest = {node: (0, None) for node in begs}
+    # Search for an end
+    while len(queue) > 0:
+        # Get the node with the smallest total distance
+        (dist_node, node) = heapq.heappop(queue)
+        # If this node has already been visited, then continue, because
+        # a shorter distance to it was already found
+        if node in visited:
+            continue
+        # This is the shortest path to this node, so it is settled
+        visited.add(node)
+        # If a suitable end was found, return the path
+        if node in ends:
+            rev_path = [node]
+            (_, prev) = shortest[node]
+            while prev is not None:
+                rev_path.append(prev)
+                (_, prev) = shortest[prev]
+            return (list(reversed(rev_path)), dist_node)
+        # Explore neighbors for new or shorter paths
+        for nbr in graph.out_neighbors(node):
+            # Only process neighbors not visited or excluded
+            if nbr not in visited and (excl_edges is None or
+                                       (node, nbr) not in excl_edges):
+                # Find the distance to the neighbor
+                dist_edge = (1
+                             if distance is None
+                             else distance(graph, node, nbr))
+                dist_nbr = dist_node + dist_edge
+                # Update with shorter paths
+                if nbr not in shortest or dist_nbr < shortest[nbr][0]:
+                    shortest[nbr] = (dist_nbr, node)
+                    heapq.heappush(queue, (dist_nbr, nbr))
+    # No path found
+    return None
+
+
+def shortest_path(graph, begin, end, *args, **kwds):
+    """
+    Call `shortest_path_btw_sets(graph, (begin,), (end,), *args,
+    **kwds)`.
+    """
+    return shortest_path_btw_sets(graph, (begin,), (end,), *args, **kwds)
