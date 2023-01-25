@@ -1,6 +1,6 @@
 """Basic graph implementation"""
 
-# Copyright (c) 2017, 2022 Aubrey Barnard.
+# Copyright (c) 2017, 2022-2023 Aubrey Barnard.
 #
 # This is free, open software released under the MIT license.  See
 # `LICENSE` for details.
@@ -359,7 +359,7 @@ def path_exists_bfs(graph, start, end):
 
 
 def _check_excluded_nodes(nodes_label, nodes, excluded_nodes):
-    n_excluded = len(excluded_nodes.intersection(nodes))
+    n_excluded = len(nodes & excluded_nodes)
     if n_excluded == len(nodes):
         raise ValueError(f'All {nodes_label} nodes are excluded')
     elif n_excluded > 0:
@@ -373,7 +373,7 @@ def shortest_path_btw_sets(
         distance=None,
         excluded_nodes=None,
         excluded_edges=None,
-        #is_ok_length=None, # TODO? only if it can work with backtracking
+        is_distance_ok=None,
 ):
     """
     Find a shortest path in a graph between the given sets of begin
@@ -382,9 +382,16 @@ def shortest_path_btw_sets(
 
     This is an implementation of Dijkstra's algorithm that generalizes
     it as much as possible without changing its structure or complexity.
+    As such, this operates by expanding a shortest paths spanning tree
+    until one of the goal nodes is found.  If the distance to that node
+    is OK according to `is_distance_ok`, then it is returned.  Else the
+    search continues.  This means that a node will only be returned if
+    its shortest path is OK; a longer path to that node will not be
+    considered, even if it might satisfy `is_distance_ok`.
+
     Note that Dijkstra's algorithm does not work for finding a shortest
     path from X to X (a shortest cycle) because that requires a
-    fundamentally more complex search.  However, one can find a shortest
+    fundamentally different search.  However, one can find a shortest
     cycle from X to X through neighbor Y by finding a shortest path from
     X to Y when excluding edge X-Y.
 
@@ -399,7 +406,7 @@ def shortest_path_btw_sets(
     `distance`: callable(graph, node1, node2) -> distance >= 0 | None
 
         Function to give the distance along each edge.  If `None`, the
-        distance of each edge is 1.
+        distance / length / weight of each edge is 1.
 
     `excluded_nodes`: iterable[node] | None
 
@@ -410,55 +417,76 @@ def shortest_path_btw_sets(
 
         Edges to exclude from all paths.  Pretends the given edges do
         not exist.
+
+    `is_distance_ok`: callable(distance) -> {-1, 0, 1} | None
+
+        Function that decides whether a given path length (total
+        distance) is too short (return -1), too long (+1), or is
+        acceptable (0).  If `None`, every path length is acceptable, and
+        so the first (and necessarily shortest) path found will be
+        returned.
+
+        If this function returns 1, then the search terminates
+        immediately because the current shortest path is already too
+        long.  This is useful for pruning the search.  Otherwise, the
+        return value of this function is considered only if a goal node
+        is found.
     """
     # Collect iterable arguments.  Filter out nodes not in the graph.
     begs = [beg for beg in begins if graph.has_node(beg)]
     ends = set(end for end in ends if graph.has_node(end))
-    visited = set() if excluded_nodes is None else set(excluded_nodes)
-    excl_edges = (set(tuple(e) for e in excluded_edges)
-                  if excluded_edges is not None else None)
     # Treat no nodes and nodes not in the graph as having no path
     if len(begs) == 0 or len(ends) == 0:
         return None
-    # Sanity check the exclusions
-    _check_excluded_nodes('begin', begs, visited)
-    _check_excluded_nodes('end', ends, visited)
+    # The shortest paths spanning tree.  Visted nodes are mapped to
+    # their distance and parent in the SPST.  Seed it with the excluded
+    # nodes to exclude them from the search.
+    spst = ({}
+            if excluded_nodes is None
+            else {node: None for node in excluded_nodes})
+    # Finish setting up the exclusions.  Check them for sanity.
+    excl_edges = (set(tuple(e) for e in excluded_edges)
+                  if excluded_edges is not None else None)
+    _check_excluded_nodes('begin', begs, spst.keys())
+    _check_excluded_nodes('end', ends, spst.keys())
     # Create a min priority queue for the shortest paths reached so far
-    queue = [(0, node) for node in begs]
-    # Shortest distance to each node and where it came from
-    shortest = {node: (0, None) for node in begs}
+    queue = [(0, node, None) for node in begs]
     # Search for an end
     while len(queue) > 0:
         # Get the node with the smallest total distance
-        (dist_node, node) = heapq.heappop(queue)
+        (dist_node, node, prev) = heapq.heappop(queue)
+        # Check whether the current distance is acceptable.  Terminate
+        # the search immediately if the distance is already too long.
+        len_cmp = (is_distance_ok(dist_node)
+                   if is_distance_ok is not None
+                   else 0)
+        if len_cmp >= 1:
+            return None
         # If this node has already been visited, then continue, because
         # a shorter distance to it was already found
-        if node in visited:
+        if node in spst:
             continue
-        # This is the shortest path to this node, so it is settled
-        visited.add(node)
+        # This is the shortest path to this node, so add it to the SPST
+        spst[node] = (dist_node, prev)
         # If a suitable end was found, return the path
-        if node in ends:
+        if node in ends and len_cmp == 0:
             rev_path = [node]
-            (_, prev) = shortest[node]
             while prev is not None:
                 rev_path.append(prev)
-                (_, prev) = shortest[prev]
+                (_, prev) = spst[prev]
             return (list(reversed(rev_path)), dist_node)
         # Explore neighbors for new or shorter paths
         for nbr in graph.out_neighbors(node):
             # Only process neighbors not visited or excluded
-            if nbr not in visited and (excl_edges is None or
-                                       (node, nbr) not in excl_edges):
+            if nbr not in spst and (excl_edges is None or
+                                    (node, nbr) not in excl_edges):
                 # Find the distance to the neighbor
                 dist_edge = (1
                              if distance is None
                              else distance(graph, node, nbr))
                 dist_nbr = dist_node + dist_edge
-                # Update with shorter paths
-                if nbr not in shortest or dist_nbr < shortest[nbr][0]:
-                    shortest[nbr] = (dist_nbr, node)
-                    heapq.heappush(queue, (dist_nbr, nbr))
+                # Enqueue this neighbor
+                heapq.heappush(queue, (dist_nbr, nbr, node))
     # No path found
     return None
 
@@ -469,3 +497,7 @@ def shortest_path(graph, begin, end, *args, **kwds):
     **kwds)`.
     """
     return shortest_path_btw_sets(graph, (begin,), (end,), *args, **kwds)
+
+
+# TODO generator for all shortest paths that can handle tied lengths
+# TODO generator for all simple paths

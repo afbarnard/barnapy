@@ -1,6 +1,6 @@
 """Tests `graph.py`."""
 
-# Copyright (c) 2022 Aubrey Barnard.
+# Copyright (c) 2022-2023 Aubrey Barnard.
 #
 # This is free, open software released under the MIT license.  See
 # `LICENSE` for details.
@@ -116,6 +116,33 @@ test_graphs = {
                'DO': 86, 'AX': 71, 'UY': 69, 'DH': 90, 'OG': 72, 'DE': 36,
                'IZ': 82, 'NP': 82, 'IM': 25, 'QT':  5, 'FY': 34, 'PU': 61,
                'EH': 24, 'SX':  9, 'PX': 19, 'OT': 69, 'DM': 94, 'OR': 90},
+    ),
+
+    "Pascal's triangle": dict(
+        draw=r'''
+                    A1
+                   / \
+                  B1  C1
+                 / \ / \
+                D1  E2  F1
+               / \ / \ / \
+              G1  H3  I3  J1
+             / \ / \ / \ / \
+            K1  L4  M6  N4  O1
+           / \ / \ / \ / \ / \
+          P1  Q5  R10 S10 T5  U1
+         / \ / \ / \ / \ / \ / \
+        V1  W6  X15 Y20 Z15 a6  b1
+        ''',
+        # Distances are value at node below
+        dists={'AB': 1, 'AC': 1,
+               'BD': 1, 'BE': 2, 'CE': 2, 'CF': 1,
+               'DG': 1, 'DH': 3, 'EH': 3, 'EI': 3, 'FI': 3, 'FJ': 1,
+               'GK': 1, 'GL': 4, 'HL': 4, 'HM': 6, 'IM': 6, 'IN': 4, 'JN': 4, 'JO': 1,
+               'KP': 1, 'KQ': 5, 'LQ': 5, 'LR': 10, 'MR': 10,
+               'MS': 10, 'NS': 10, 'NT': 5, 'OT': 5, 'OU': 1,
+               'PV': 1, 'PW': 6, 'QW': 6, 'QX': 15, 'RX': 15, 'RY': 20,
+               'SY': 20, 'SZ': 15, 'TZ': 15, 'Ta': 6, 'Ua': 6, 'Ub': 1},
     ),
 
 }
@@ -269,3 +296,24 @@ class ShortestPathTest(unittest.TestCase):
                 act = graph.shortest_path_btw_sets(
                     grf, begs, ends, distf, excl)
                 self.assertEqual(exp, act)
+
+    def test_is_distance_ok(self):
+        (grf, distf) = mk_graph(test_graphs["Pascal's triangle"])
+        # Minimum
+        self.assertEqual((list('ABE'), 3), graph.shortest_path(
+            grf, 'A', 'E', distf, is_distance_ok=lambda l: -1 if l < 3 else 0))
+        self.assertEqual(None, graph.shortest_path(
+            grf, 'A', 'E', distf, is_distance_ok=lambda l: -1 if l < 4 else 0))
+        # Maximum
+        self.assertEqual((list('ABDHM'), 11), graph.shortest_path(
+            grf, 'A', 'M', distf, is_distance_ok=lambda l: 1 if l > 11 else 0))
+        self.assertEqual(None, graph.shortest_path(
+            grf, 'A', 'M', distf, is_distance_ok=lambda l: 1 if l > 10 else 0))
+        # Range (only includes R and S)
+        ilo = lambda l: -1 if l < 10 else (1 if l > 20 else 0)
+        self.assertEqual((list('ACFJNS'), 17), graph.shortest_path(
+            grf, 'A', 'S', distf, is_distance_ok=ilo))
+        self.assertEqual(None, graph.shortest_path(
+            grf, 'A', 'T', distf, is_distance_ok=ilo))
+        self.assertEqual(None, graph.shortest_path(
+            grf, 'A', 'X', distf, is_distance_ok=ilo))
