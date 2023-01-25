@@ -149,18 +149,20 @@ test_graphs = {
 
 
 def mk_graph(grf_def):
-    grf = graph.Graph()
+    grf = graph.Graph(default_weight=1)
     if 'nodes' in grf_def:
         grf.add_nodes(grf_def['nodes'])
     for (node1, node2) in itools.chain(
             grf_def.get('edges', ()), grf_def.get('dists', {}).keys()):
         grf.add_edge(node1, node2)
         grf.add_edge(node2, node1)
+    distf = None
     dists = grf_def.get('dists')
-    distf = (lambda g, n1, n2: (
-        dists.get(f'{n1}{n2}', dists.get(f'{n2}{n1}', 1)))
-             if dists is not None
-             else None)
+    if dists is not None:
+        for ((n1, n2), wgt) in dists.items():
+            grf.set_weight(n1, n2, wgt)
+            grf.set_weight(n2, n1, wgt)
+        distf = graph.Graph.weight
     return (grf, distf)
 
 

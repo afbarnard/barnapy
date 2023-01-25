@@ -11,6 +11,10 @@ import heapq
 import warnings
 
 
+# A unique sentinel value that is not None
+_unspecified = object()
+
+
 class Graph:
 
     def __init__(
@@ -88,9 +92,10 @@ class Graph:
     def edges(self):
         return self._edge_store.edges()
 
-    def weight(self, node1, node2):
+    def weight(self, node1, node2, default=_unspecified):
         return self._weight_store.weight(
-            node1, node2, self._default_weight)
+            node1, node2,
+            self._default_weight if default is _unspecified else default)
 
     def edges_weights(self):
         for edge in self.edges():
@@ -99,12 +104,12 @@ class Graph:
     def add_node(self, node):
         self._node_store.add_node(node)
 
-    def add_edge(self, node1, node2, weight=None):
+    def add_edge(self, node1, node2, weight=_unspecified):
         self._node_store.add_node(node1)
         self._node_store.add_node(node2)
         self._edge_store.add_edge(node1, node2)
         # Only set a weight on the edge if specified
-        if weight is not None:
+        if weight is not _unspecified:
             self.set_weight(node1, node2, weight)
 
     def set_weight(self, node1, node2, weight):
@@ -499,5 +504,7 @@ def shortest_path(graph, begin, end, *args, **kwds):
     return shortest_path_btw_sets(graph, (begin,), (end,), *args, **kwds)
 
 
+# TODO undirected graphs
+# TODO general properties on nodes and edges with special provision for weights (including default weight key and being able to set the weight key)
 # TODO generator for all shortest paths that can handle tied lengths
 # TODO generator for all simple paths
