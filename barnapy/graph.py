@@ -11,10 +11,6 @@ import heapq
 import warnings
 
 
-# A unique sentinel value that is not None
-_unspecified = object()
-
-
 class Graph:
 
     def __init__(
@@ -92,10 +88,10 @@ class Graph:
     def edges(self):
         return self._edge_store.edges()
 
-    def weight(self, node1, node2, default=_unspecified):
+    def weight(self, node1, node2, default=None):
         return self._weight_store.weight(
             node1, node2,
-            self._default_weight if default is _unspecified else default)
+            self._default_weight if default is None else default)
 
     def edges_weights(self):
         for edge in self.edges():
@@ -104,12 +100,12 @@ class Graph:
     def add_node(self, node):
         self._node_store.add_node(node)
 
-    def add_edge(self, node1, node2, weight=_unspecified):
+    def add_edge(self, node1, node2, weight=None):
         self._node_store.add_node(node1)
         self._node_store.add_node(node2)
         self._edge_store.add_edge(node1, node2)
         # Only set a weight on the edge if specified
-        if weight is not _unspecified:
+        if weight is not None:
             self.set_weight(node1, node2, weight)
 
     def set_weight(self, node1, node2, weight):
