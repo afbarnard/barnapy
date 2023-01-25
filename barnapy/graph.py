@@ -17,9 +17,43 @@ class Graph:
             self,
             node_store=None,
             edge_store=None,
-            weight_store=None,
+            prop_store=True,
+            weight_key='weight',
             default_weight=None,
-            ):
+    ):
+        """
+        Create a graph using the given data structures.
+
+        A property store must be specified in order to use weights.
+
+        `node_store`: NodeStore | None
+
+            If `None`, a default node store will be created.
+
+        `edge_store`: EdgeStore | None
+
+            If `None`, the node store will be used if it also functions
+            as an edge store.  Else a default edge store will be
+            created.
+
+        `prop_store`: PropertyStore | None | True
+
+            If `None`, this graph will not support properties (and will
+            use less memory).  If `True` then a default property store
+            will be created.
+
+        `weight_key`: hashable
+
+            The key to use for the weight property.
+
+        `default_weight`: object
+
+            Value to use as the default weight.  If `None`, then the
+            default weight is not set.
+        """
+        self._node_store = node_store
+        self._edge_store = edge_store
+        self._prop_store = prop_store
         if node_store is None:
             self._node_store = DictSetNodeEdgeStore()
         if edge_store is None:
@@ -27,9 +61,11 @@ class Graph:
                 self._edge_store = self._node_store
             else:
                 self._edge_store = DictSetEdgeStore()
-        if weight_store is None:
-            self._weight_store = DictWeightStore()
-        self._default_weight = default_weight
+        if prop_store is True:
+            self._prop_store = DictPropertyStore()
+        self.weight_key = weight_key
+        if default_weight is not None:
+            self.set_property_default(self.weight_key, default_weight)
 
     @staticmethod
     def from_nodes_edges(nodes_edges):
@@ -44,6 +80,8 @@ class Graph:
                     'Not interpretable as a node or edge: {}'
                     .format(item))
         return _graph
+
+    # TODO `from_hyperedges`, `from_hyperedges_properties`
 
     def to_nodes_edges(self, sort=False):
         nodes = self.nodes()
@@ -67,14 +105,38 @@ class Graph:
         for edge_weight in edges_weights:
             yield edge_weight
 
+    # TODO `to_hyperedges`, `to_hyperedges_properties`
+
+    # Properties
+
+    @property
+    def weight_key(self):
+        return self._wgt_key
+
+    @weight_key.setter
+    def weight_key(self, property_key):
+        self._wgt_key = property_key
+
+    # Query API
+
     def has_node(self, node):
         return self._node_store.has_node(node)
 
     def has_edge(self, node1, node2):
         return self._edge_store.has_edge(node1, node2)
 
+    def has_property_default(self, property_key):
+        if self._prop_store is None:
+            return False
+        return self._prop_store.has_property_default(property_key)
+
+    def has_property(self, property_key, *nodes):
+        if self._prop_store is None:
+            return False
+        return self._prop_store.has_property(property_key, *nodes)
+
     def has_weight(self, node1, node2):
-        return self._weight_store.has_weight(node1, node2)
+        return self.has_property(self.weight_key, node1, node2)
 
     def n_nodes(self):
         return self._node_store.n_nodes()
@@ -85,17 +147,30 @@ class Graph:
     def nodes(self):
         return self._node_store.nodes()
 
+    nodes_properties = NotImplemented # TODO
+
     def edges(self):
         return self._edge_store.edges()
 
+    edges_properties = NotImplemented # TODO
+
+    def property_default(property_key, value_if_not_exist=None):
+        return self._prop_store.get_property_default(
+            property_key, value_if_not_exist=value_if_not_exist)
+
+    def property(self, property_key, *nodes, value_if_not_exist=None):
+        return self._prop_store.get_property(
+            property_key, *nodes, value_if_not_exist=value_if_not_exist)
+
     def weight(self, node1, node2, default=None):
-        return self._weight_store.weight(
-            node1, node2,
-            self._default_weight if default is None else default)
+        return self.property(self.weight_key, node1, node2,
+                             value_if_not_exist=default)
 
     def edges_weights(self):
         for edge in self.edges():
             yield (edge, self.weight(*edge))
+
+    # Modification API
 
     def add_node(self, node):
         self._node_store.add_node(node)
@@ -112,7 +187,7 @@ class Graph:
         # Add edge if it doesn't exist
         if not self.has_edge(node1, node2):
             self.add_edge(node1, node2)
-        self._weight_store.set_weight(node1, node2, weight)
+        self.set_property(self.weight_key, weight, node1, node2)
 
     def add_nodes(self, nodes):
         for node in nodes:
@@ -138,7 +213,7 @@ class Graph:
         self._edge_store.del_edge(node1, node2)
 
     def del_weight(self, node1, node2):
-        self._weight_store.del_weight(node1, node2)
+        self.del_property(self.weight_key, node1, node2)
 
     def del_nodes(self, nodes):
         for node in nodes:
@@ -147,6 +222,18 @@ class Graph:
     def del_edges(self, edges):
         for edge in edges:
             self.del_edge(edge)
+
+    def set_property_default(self, property_key, value):
+        self._prop_store.set_property_default(property_key, value)
+
+    def set_property(self, property_key, value, *nodes):
+        self._prop_store.set_property(property_key, value, *nodes)
+
+    def del_property_default(self, property_key):
+        self._prop_store.del_property_default(property_key)
+
+    def del_property(self, property_key, *nodes):
+        self._prop_store.del_property(property_key, *nodes)
 
     def out_degree(self, node):
         return self._edge_store.out_degree(node)
@@ -297,24 +384,6 @@ class DictSetNodeEdgeStore:
     def in_neighbors(self, node):
         return (parent for (parent, children) in self._nodes2childrens.items()
                 if node in children)
-
-
-class DictWeightStore:
-
-    def __init__(self):
-        self._edges_weights = {}
-
-    def has_weight(self, node1, node2):
-        return (node1, node2) in self._edges_weights
-
-    def weight(self, node1, node2, default=None):
-        return self._edges_weights.get((node1, node2), default)
-
-    def set_weight(self, node1, node2, weight):
-        self._edges_weights[node1, node2] = weight
-
-    def del_weight(self, node1, node2):
-        del self._edges_weights[node1, node2]
 
 
 class DictPropertyStore:
@@ -551,5 +620,7 @@ def shortest_path(graph, begin, end, *args, **kwds):
 # TODO generator for all shortest paths that can handle tied lengths
 # TODO generator for all simple paths
 # TODO undirected graphs (undirected vs. directed has to do with storage and neighbors, not edge types)
-# TODO self edges?
-# TODO multiple edges?
+# TODO how enforce correspondence between hyperedges and properties?
+# TODO self edges? (n_self_edges)
+# TODO multiple edges? (n_multi_edges) n_edges - n_self_edges - n_multi_edges -> n_simple_edges (graph is simple if `n_self_edges == 0 and n_multi_edges == 0`)
+# TODO fully support hyperedges
