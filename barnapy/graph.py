@@ -321,6 +321,54 @@ class DictWeightStore:
         del self._edges_weights[node1, node2]
 
 
+class DictPropertyStore:
+
+    def __init__(self):
+        # Store property values under the compound key (property_key,
+        # *nodes) so that properties on nodes and arbitrary hyperedges
+        # can be accommodated while being able to just pick off the
+        # first item as the property key.  (The property key could be
+        # last, but then one couldn't use the '*nodes' syntax.)  Store
+        # default property values here too because that's more
+        # memory-efficient than having a separate map.
+        self._key_hedge2val = {}
+
+    def has_property_default(self, property_key):
+        return property_key in self._key_hedge2val
+
+    def get_property_default(self, property_key, value_if_not_exist=None):
+        return self._key_hedge2val.get(property_key, value_if_not_exist)
+
+    def set_property_default(self, property_key, value):
+        self._key_hedge2val[property_key] = value
+
+    def del_property_default(self, property_key):
+        if property_key in self._key_hedge2val:
+            del self._key_hedge2val[property_key]
+
+    def has_property(self, property_key, *nodes):
+        return (property_key, *nodes) in self._key_hedge2val
+
+    def get_property(self, property_key, *nodes, value_if_not_exist=None):
+        """
+        Return the stored property (if it exists), or return the
+        default value (if it exists), or return the given value.
+        """
+        # Use a (hopefully) unique sentinel value
+        value = self._key_hedge2val.get((property_key, *nodes), self)
+        if value is self:
+            value = self._key_hedge2val.get(property_key, value_if_not_exist)
+        return value
+
+    def set_property(self, property_key, value, *nodes):
+        self._key_hedge2val[(property_key, *nodes)] = value
+
+    def del_property(self, property_key, *nodes):
+        key = (property_key, *nodes)
+        if key in self._key_hedge2val:
+            del self._key_hedge2val[key]
+
+
 # Algorithms #
 
 
@@ -504,7 +552,8 @@ def shortest_path(graph, begin, end, *args, **kwds):
     return shortest_path_btw_sets(graph, (begin,), (end,), *args, **kwds)
 
 
-# TODO undirected graphs
-# TODO general properties on nodes and edges with special provision for weights (including default weight key and being able to set the weight key)
 # TODO generator for all shortest paths that can handle tied lengths
 # TODO generator for all simple paths
+# TODO undirected graphs (undirected vs. directed has to do with storage and neighbors, not edge types)
+# TODO self edges?
+# TODO multiple edges?

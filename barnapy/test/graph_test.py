@@ -166,6 +166,113 @@ def mk_graph(grf_def):
     return (grf, distf)
 
 
+class DictPropertyStoreTest(unittest.TestCase):
+
+    def test_add_property_default(self):
+        ps = graph.DictPropertyStore()
+        self.assertFalse(ps.has_property_default(17))
+        ps.set_property_default(17, 19)
+        self.assertTrue(ps.has_property_default(17))
+        self.assertEqual(19, ps.get_property_default(17))
+
+    def test_add_property(self):
+        ps = graph.DictPropertyStore()
+        self.assertFalse(ps.has_property(19, *'AZ'))
+        ps.set_property(19, 23, *'AZ')
+        self.assertTrue(ps.has_property(19, *'AZ'))
+        self.assertEqual(23, ps.get_property(19, *'AZ'))
+
+    def test_del_property_default(self):
+        ps = graph.DictPropertyStore()
+        ps.set_property_default('len', 17)
+        self.assertTrue(ps.has_property_default('len'))
+        ps.del_property_default('len')
+        self.assertFalse(ps.has_property_default('len'))
+        try:
+            ps.del_property_default('len')
+        except KeyError:
+            self.fail('Should not have thrown a KeyError')
+
+    def test_del_property(self):
+        ps = graph.DictPropertyStore()
+        ps.set_property('len', 17, *'AB')
+        self.assertTrue(ps.has_property('len', *'AB'))
+        ps.del_property('len', *'AB')
+        self.assertFalse(ps.has_property('len', *'AB'))
+        try:
+            ps.del_property('len', *'AB')
+        except KeyError:
+            self.fail('Should not have thrown a KeyError')
+
+    def test_levels(self):
+        for (test_name, prop_key, prop_val, hyperedge) in [
+                ('graph level property', 'name', 'Aloicious', ()),
+                ('node level property', 'elev', 912, ('A',)),
+                ('edge level property', 'dist', 12345.6789, ('A', 'B')),
+                ('4th level property', 'corr', 0.644206, tuple('ABCD')),
+        ]:
+            with self.subTest(test_name):
+                ps = graph.DictPropertyStore()
+                self.assertFalse(ps.has_property(prop_key, *hyperedge))
+                ps.set_property(prop_key, prop_val, *hyperedge)
+                self.assertTrue(ps.has_property(prop_key, *hyperedge))
+                self.assertEqual(prop_val,
+                                 ps.get_property(prop_key, *hyperedge))
+
+    def test_default_values(self):
+        ps = graph.DictPropertyStore()
+        obj = object()
+        with self.subTest('nothing stored'):
+            self.assertFalse(ps.has_property(538, *'US'))
+            self.assertFalse(ps.has_property_default(538))
+            self.assertEqual(obj, ps.get_property(
+                538, *'US', value_if_not_exist=obj))
+        ps.set_property_default(538, 'five')
+        with self.subTest('default stored'):
+            self.assertFalse(ps.has_property(538, *'US'))
+            self.assertTrue(ps.has_property_default(538))
+            self.assertEqual('five', ps.get_property(
+                538, *'US', value_if_not_exist=obj))
+        ps.set_property(538, 'votes', *'US')
+        with self.subTest('property stored'):
+            self.assertTrue(ps.has_property(538, *'US'))
+            self.assertTrue(ps.has_property_default(538))
+            self.assertEqual('votes', ps.get_property(
+                538, *'US', value_if_not_exist=obj))
+
+    def test_default_values_after_delete(self):
+        ps = graph.DictPropertyStore()
+        ps.set_property_default(538, 'five')
+        ps.set_property(538, 'votes', *'US')
+        obj = object()
+        self.assertEqual('votes', ps.get_property(
+            538, *'US', value_if_not_exist=obj))
+        self.assertTrue(ps.has_property(538, *'US'))
+        self.assertTrue(ps.has_property_default(538))
+        ps.del_property(538, *'US')
+        with self.subTest('after property deleted'):
+            self.assertFalse(ps.has_property(538, *'US'))
+            self.assertTrue(ps.has_property_default(538))
+            self.assertEqual('five', ps.get_property(
+                538, *'US', value_if_not_exist=obj))
+        ps.del_property_default(538)
+        with self.subTest('after default deleted'):
+            self.assertFalse(ps.has_property(538, *'US'))
+            self.assertFalse(ps.has_property_default(538))
+            self.assertEqual(obj, ps.get_property(
+                538, *'US', value_if_not_exist=obj))
+
+    def test_store_None(self):
+        ps = graph.DictPropertyStore()
+        # "Value if does not exist" is `None`
+        self.assertFalse(ps.has_property(13, *'XYZ'))
+        self.assertIsNone(ps.get_property(13, *'XYZ'))
+        # Stored value is `None`
+        ps.set_property(13, None, *'XYZ')
+        self.assertTrue(ps.has_property(13, *'XYZ'))
+        self.assertIsNone(ps.get_property(13, *'XYZ', value_if_not_exist=self))
+
+
 class ShortestPathTest(unittest.TestCase):
 
     def test_empty_graph(self):
