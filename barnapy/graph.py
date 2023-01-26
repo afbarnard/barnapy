@@ -114,8 +114,8 @@ class Graph:
         return self._wgt_key
 
     @weight_key.setter
-    def weight_key(self, property_key):
-        self._wgt_key = property_key
+    def weight_key(self, key):
+        self._wgt_key = key
 
     # Query API
 
@@ -125,18 +125,18 @@ class Graph:
     def has_edge(self, node1, node2):
         return self._edge_store.has_edge(node1, node2)
 
-    def has_property_default(self, property_key):
-        if self._prop_store is None:
-            return False
-        return self._prop_store.has_property_default(property_key)
-
-    def has_property(self, property_key, *nodes):
-        if self._prop_store is None:
-            return False
-        return self._prop_store.has_property(property_key, *nodes)
-
     def has_weight(self, node1, node2):
         return self.has_property(self.weight_key, node1, node2)
+
+    def has_property(self, key, *nodes):
+        if self._prop_store is None:
+            return False
+        return self._prop_store.has_property(key, *nodes)
+
+    def has_property_default(self, key):
+        if self._prop_store is None:
+            return False
+        return self._prop_store.has_property_default(key)
 
     def n_nodes(self):
         return self._node_store.n_nodes()
@@ -144,31 +144,45 @@ class Graph:
     def n_edges(self):
         return self._edge_store.n_edges()
 
+    def out_degree(self, node):
+        return self._edge_store.out_degree(node)
+
+    def in_degree(self, node):
+        return self._edge_store.in_degree(node)
+
     def nodes(self):
         return self._node_store.nodes()
-
-    nodes_properties = NotImplemented # TODO
 
     def edges(self):
         return self._edge_store.edges()
 
-    edges_properties = NotImplemented # TODO
+    def out_neighbors(self, node):
+        return self._edge_store.out_neighbors(node)
 
-    def property_default(property_key, value_if_not_exist=None):
-        return self._prop_store.get_property_default(
-            property_key, value_if_not_exist=value_if_not_exist)
+    neighbors = out_neighbors
 
-    def property(self, property_key, *nodes, value_if_not_exist=None):
-        return self._prop_store.get_property(
-            property_key, *nodes, value_if_not_exist=value_if_not_exist)
+    def in_neighbors(self, node):
+        return self._edge_store.in_neighbors(node)
 
     def weight(self, node1, node2, default=None):
         return self.property(self.weight_key, node1, node2,
                              value_if_not_exist=default)
 
+    def property(self, key, *nodes, value_if_not_exist=None):
+        return self._prop_store.get_property(
+            key, *nodes, value_if_not_exist=value_if_not_exist)
+
+    def property_default(key, value_if_not_exist=None):
+        return self._prop_store.get_property_default(
+            key, value_if_not_exist=value_if_not_exist)
+
     def edges_weights(self):
         for edge in self.edges():
             yield (edge, self.weight(*edge))
+
+    nodes_properties = NotImplemented # TODO
+
+    edges_properties = NotImplemented # TODO
 
     # Modification API
 
@@ -182,12 +196,6 @@ class Graph:
         # Only set a weight on the edge if specified
         if weight is not None:
             self.set_weight(node1, node2, weight)
-
-    def set_weight(self, node1, node2, weight):
-        # Add edge if it doesn't exist
-        if not self.has_edge(node1, node2):
-            self.add_edge(node1, node2)
-        self.set_property(self.weight_key, weight, node1, node2)
 
     def add_nodes(self, nodes):
         for node in nodes:
@@ -212,9 +220,6 @@ class Graph:
             self.del_weight(node1, node2)
         self._edge_store.del_edge(node1, node2)
 
-    def del_weight(self, node1, node2):
-        self.del_property(self.weight_key, node1, node2)
-
     def del_nodes(self, nodes):
         for node in nodes:
             self.del_node(node)
@@ -223,31 +228,26 @@ class Graph:
         for edge in edges:
             self.del_edge(edge)
 
-    def set_property_default(self, property_key, value):
-        self._prop_store.set_property_default(property_key, value)
+    def set_weight(self, node1, node2, weight):
+        # Add edge if it doesn't exist
+        if not self.has_edge(node1, node2):
+            self.add_edge(node1, node2)
+        self.set_property(self.weight_key, weight, node1, node2)
 
-    def set_property(self, property_key, value, *nodes):
-        self._prop_store.set_property(property_key, value, *nodes)
+    def set_property(self, key, value, *nodes):
+        self._prop_store.set_property(key, value, *nodes)
 
-    def del_property_default(self, property_key):
-        self._prop_store.del_property_default(property_key)
+    def set_property_default(self, key, value):
+        self._prop_store.set_property_default(key, value)
 
-    def del_property(self, property_key, *nodes):
-        self._prop_store.del_property(property_key, *nodes)
+    def del_weight(self, node1, node2):
+        self.del_property(self.weight_key, node1, node2)
 
-    def out_degree(self, node):
-        return self._edge_store.out_degree(node)
+    def del_property(self, key, *nodes):
+        self._prop_store.del_property(key, *nodes)
 
-    def in_degree(self, node):
-        return self._edge_store.in_degree(node)
-
-    def out_neighbors(self, node):
-        return self._edge_store.out_neighbors(node)
-
-    neighbors = out_neighbors
-
-    def in_neighbors(self, node):
-        return self._edge_store.in_neighbors(node)
+    def del_property_default(self, key):
+        self._prop_store.del_property_default(key)
 
 
 class SetNodeStore:
