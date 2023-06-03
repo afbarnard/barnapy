@@ -1,7 +1,9 @@
 """Convenient, high-level file API"""
 
-# Copyright (c) 2017 Aubrey Barnard.  This is free software released
-# under the MIT license.  See LICENSE for details.
+# Copyright (c) 2015-2018, 2023 Aubrey Barnard.
+#
+# This is free, open software released under the MIT license.  See
+# `LICENSE` for details.
 
 
 import io
@@ -21,10 +23,10 @@ def new(file):
     elif isinstance(file, io.IOBase):
         return Stream(file)
     else:
-        raise TypeError('Not a filename or stream: {}'.format())
+        raise TypeError('Not a filename or stream: {}'.format(file))
 
-def open(path, mode='rt'):
-    return new(path).open(mode=mode)
+def open(path, mode='rt', **opts):
+    return new(path).open(mode=mode, **opts)
 
 
 class File:
@@ -145,21 +147,21 @@ class File:
         if not self.is_writable():
             raise ValueError('Not writable: {}'.format(self))
 
-    def open(self, mode='rt'):
+    def open(self, mode='rt', **opts):
         # Handle compressed files
         suffix = self.suffix.lower().lstrip('.')
         if suffix in ('bz2', 'bzip2'):
             import bz2
-            return bz2.open(self.path, mode=mode)
+            return bz2.open(self.path, mode=mode, **opts)
         elif suffix in ('xz', 'lzma'):
             import lzma
-            return lzma.open(self.path, mode=mode)
+            return lzma.open(self.path, mode=mode, **opts)
         # Use gzip for all common Lempel-Ziv compression suffixes
         elif suffix in ('gz', 'z', 'Z'):
             import gzip
-            return gzip.open(self.path, mode=mode)
+            return gzip.open(self.path, mode=mode, **opts)
         else:
-            return io.open(self.path, mode=mode)
+            return io.open(self.path, mode=mode, **opts)
 
     def generate_lines(self):
         with self.open(mode='rt') as file:
@@ -209,7 +211,7 @@ class Stream:
         if not self.is_writable():
             raise ValueError('Not a writable stream: {}'.format(self))
 
-    def open(self, mode='rt'):
+    def open(self, mode='rt', **opts): # FIXME don't close stdout?  return a wrapped stream?
         # Check mode is compatible with the existing stream
         mode = mode.lower()
         if 'r' in mode:
