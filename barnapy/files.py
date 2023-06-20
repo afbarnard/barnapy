@@ -6,9 +6,12 @@
 # `LICENSE` for details.
 
 
+import contextlib
 import io
 import os.path
 
+
+# TODO deprecate all this in favor of `pathlib` and a generic `open` function that works for a variety of inputs
 
 # TODO how handle streams? can they be effectively wrapped?
 # TODO how handle resolving names of executables?
@@ -211,7 +214,11 @@ class Stream:
         if not self.is_writable():
             raise ValueError('Not a writable stream: {}'.format(self))
 
-    def open(self, mode='rt', **opts): # FIXME don't close stdout?  return a wrapped stream?
+    def open(self, mode='rt', **opts): # FIXME return a file-like object that behaves properly
+        """
+        Return a context manager (not a file-like object) for this
+        stream.
+        """
         # Check mode is compatible with the existing stream
         mode = mode.lower()
         if 'r' in mode:
@@ -230,7 +237,9 @@ class Stream:
             raise TypeError(
                 'Binary stream not compatible with text mode: {}'
                 .format(mode))
-        return self._stream
+        # Wrap the stream so that the wrapper can be closed without
+        # closing the stream
+        return contextlib.nullcontext(self._stream)
 
     def generate_lines(self):
         with self.open(mode='rt') as file:
