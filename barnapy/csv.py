@@ -33,24 +33,24 @@ def parse_csv_dialect(chars):
 
     ### Examples ###
 
-    `',"d mkl\r\n'`: Python CSV module defaults.
+    `',"d mkl\\r\\n'`: Python CSV module defaults.
 
-    `'|"e\\mks\n'`: Pipe-delimited, minimally quoted fields as for
+    `'|"e\\\\mks\\n'`: Pipe-delimited, minimally quoted fields as for
         SQLite import on Unix.
 
-    `' "E\\MTL\n\r'`: Space-aligned, human-readable tables on Acorn BBC.
+    `' "E\\\\MTL\\n\\r'`: Space-aligned, human-readable tables on Acorn BBC.
 
-    `'\t"D OKS\r'`: Excel-like TSV on old Mac.
+    `'\\t"D OKS\\r'`: Excel-like TSV on old Mac.
 
 
-    [1] While NUL (`'\x00'`) would be a natural candidate for
+    [1] While NUL (`'\\x00'`) would be a natural candidate for
         representing `None`, there are many problems with having NUL
         bytes in strings due to their prevailing use as string
         terminators.  For example, strings including NUL are not
         interpreted correctly as command line arguments.  Other control
         characters might be possible candidates, but Python encodes some
         control characters as surrogates (e.g., Python represents
-        `'\x80'` as `'\udc80'`), which is a complication best avoided
+        `'\\x80'` as `'\\udc80'`), which is a complication best avoided
         here.  The consequence is that a space cannot be an escape
         character (which seems extremely reasonable).
     """
