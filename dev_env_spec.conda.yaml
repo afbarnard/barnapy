@@ -1,0 +1,19 @@
+# Specification of Python environment for developing Barnapy, in Conda
+# YAML format.
+
+# To create this environment run:
+#     conda env create --name barnapy --file environment_spec.conda.yaml
+
+# Copyright (c) 2023 Aubrey Barnard.
+#
+# This is free software released under the MIT license.  See `LICENSE`
+# for details.
+
+
+name: barnapy
+channels:
+  - defaults
+dependencies:
+  # Match the Python version to 'setup.py'
+  - python[version='=3.7']
+  - pytest
