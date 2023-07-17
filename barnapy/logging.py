@@ -3,8 +3,10 @@ Wrapper module for the standard logging module that provides a
 sensible default configuration and {}-style formatting.
 """
 
-# Copyright (c) 2017 Aubrey Barnard.  This is free software released
-# under the MIT license.  See LICENSE for details.
+# Copyright (c) 2015-2018, 2020, 2023 Aubrey Barnard.
+#
+# This is free software released under the MIT license.  See LICENSE for
+# details.
 
 
 import collections
@@ -13,17 +15,18 @@ import logging as _logging
 import os
 import platform
 import socket
+import string
 import sys
 
 # Export same API as standard logging
 from logging import *
 
 
-class LogRecord(_logging.LogRecord):
+class CurlyBraceFormatLogRecord(_logging.LogRecord):
     """LogRecord that does {}-style formatting."""
 
     def getMessage(self):
-        return str(self.msg).format(*self.args)
+        return str(self.msg).format(*self.args, **self.__dict__)
 
     # FIXME Note that in the following an extra argument is passed when
     # logging a dict.  This is because the logging module interprets a
@@ -32,8 +35,35 @@ class LogRecord(_logging.LogRecord):
     # https://hg.python.org/cpython/file/3.4/Lib/logging/__init__.py.
 
 
+# For backwards compatibility (although I can't find any references to
+# 'LogRecord' in my code)
+class LogRecord(CurlyBraceFormatLogRecord): # TODO remove in v0.5
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        warnings.warn(
+            "'barnapy.logging.LogRecord' is deprecated "
+            "and will be removed in v0.5.  "
+            "Use 'barnapy.logging.CurlyBraceFormatLogRecord' instead.",
+            DeprecationWarning, stacklevel=2)
+
+
+class TemplateStringLogRecord(_logging.LogRecord):
+    """
+    'LogRecord' that does formatting with template strings
+    (https://docs.python.org/3/library/string.html#template-strings).
+    """
+
+    def getMessage(self):
+        # Always convert the message to a string first because it may be
+        # some sort of object (e.g., see
+        # https://docs.python.org/3/howto/logging-cookbook.html#use-of-alternative-formatting-styles)
+        template = string.Template(str(self.msg))
+        return template.safe_substitute(self.__dict__)
+
+
 def log_record_factory(*args, **kwargs):
-    return LogRecord(*args, **kwargs)
+    return CurlyBraceFormatLogRecord(*args, **kwargs)
 
 
 def default_config(file=None, level=_logging.INFO):
@@ -59,6 +89,68 @@ def default_config(file=None, level=_logging.INFO):
         raise ValueError('Not a file or filename: {}'.format(file))
     # Set factory to handle {}-style formatting in messages
     _logging.setLogRecordFactory(log_record_factory)
+
+
+class ConfigurableLogger(_logging.Logger):
+    """
+    Logger that can be configured with a message formatting style so
+    that multiple loggers with different formatting styles can be used
+    simultaneously.
+    """
+
+    def config(self, *, msg_fmt_style='{'):
+        if msg_fmt_style not in _logging._STYLES:
+            raise ValueError('Style must be one of: {}'.format(
+                ','.join(_logging._STYLES.keys())))
+        if msg_fmt_style == '{':
+            self._LogRecord = CurlyBraceFormatLogRecord
+        elif msg_fmt_style == '$':
+            self._LogRecord = TemplateStringLogRecord
+        else:
+            self._LogRecord = _logging.LogRecord
+
+    def makeRecord(self, name, level, fn, lno, msg, args, exc_info,
+                   func=None, extra=None, sinfo=None):
+        # Don't use the log record factory as that is global and can't
+        # be configured per logger.  Just directly construct a log
+        # record with the appropriate arguments.
+        record = self._LogRecord(
+            name, level, fn, lno, msg, args, exc_info, func, sinfo)
+        if extra is not None:
+            record.__dict__.update(extra)
+        return record
+
+    def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=None, **kwds):
+        if isinstance(extra, dict):
+            extra.update(kwds)
+        elif extra is None:
+            extra = kwds
+        super()._log(level, msg, args, exc_info, extra, stack_info)
+
+
+def getLogger(name=None, msg_fmt_style=None):
+    """
+    Return a logger configured with the given arguments (if any).
+    """
+    # Temporarily switch the Logger class to a configurable logger.
+    # Acquire the logging lock since this messes around with the module
+    # state.
+    if msg_fmt_style is None:
+        return _logging.getLogger(name)
+    try:
+        _logging._lock.acquire()
+        # Save the original logger class
+        logger_class = _logging.getLoggerClass()
+        # Get a configurable logger
+        _logging.setLoggerClass(ConfigurableLogger)
+        logger = _logging.getLogger(name)
+        # Restore the original logger class
+        _logging.setLoggerClass(logger_class)
+        # Configure the logger
+        logger.config(msg_fmt_style=msg_fmt_style)
+        return logger
+    finally:
+        _logging._lock.release()
 
 
 # Provide stubs for functions that are not universally available
