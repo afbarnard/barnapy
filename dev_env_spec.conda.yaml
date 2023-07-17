@@ -17,3 +17,4 @@ dependencies:
   # Match the Python version to 'setup.py'
   - python[version='=3.7']
   - pytest
+  - numpy
