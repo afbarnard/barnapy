@@ -3,17 +3,25 @@ Utilities for working with tabular data in various separated values
 formats.
 """
 
-# Copyright (c) 2022 Aubrey Barnard.
+# Copyright (c) 2022-2023 Aubrey Barnard.
 #
 # This is free software released under the MIT License.  See LICENSE for
 # details.
 
 
+import csv
+
+
 def parse_csv_dialect(chars):
     """
     Interpret the given string as a dialect for the Python CSV
-    module.  Any initial substring can be given.  Any dialect parameter
-    not specified will take its default in the Python CSV module.
+    module.
+
+    As few or as many characters as desired can be given; any dialect
+    parameter not specified will not be included in the dialect.  This
+    allows default parameter values, such as those specified in the
+    Python CSV module, to "show through".  This is intended to make CSV
+    dialects easy to specify on the command line.
 
     Character.  Dialect Parameter.
     1. Delimiter.
@@ -70,16 +78,16 @@ def parse_csv_dialect(chars):
                 f"'{chars[2]}' (not 'd' or 'e')")
     if len(chars) >= 4:
         if chars[3] == ' ':
-            dialect['quotechar'] = None
+            dialect['escapechar'] = None
         else:
-            dialect['quotechar'] = chars[3]
+            dialect['escapechar'] = chars[3]
     if len(chars) >= 5:
         if chars[4] in ('m', 'M'):
             dialect['quoting'] = csv.QUOTE_MINIMAL
         elif chars[4] in ('a', 'A'):
             dialect['quoting'] = csv.QUOTE_ALL
         elif chars[4] in ('n', 'N'):
-            dialect['quoting'] = csv.QUOTE_None
+            dialect['quoting'] = csv.QUOTE_NONE
         elif chars[4] in ('o', 'O'):
             dialect['quoting'] = csv.QUOTE_NONNUMERIC
         else:

@@ -1,7 +1,7 @@
 """
 Infrastructure for data processing
 
-A supplemental standard library with an emphasis on data processing,
+A supplemental "standard" library with an emphasis on data processing,
 made from the common code collected from my research projects.
 
 Copyright (c) 2015-2023 Aubrey Barnard.
@@ -15,4 +15,4 @@ This is free, open software released under the MIT license.  See
 
 
 # Version
-__version__ = '0.3.8'
+__version__ = '0.3.9'
