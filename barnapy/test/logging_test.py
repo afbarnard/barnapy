@@ -59,3 +59,30 @@ DEBUG test.tmplt: 23
         act = stream.getvalue()
         self.maxDiff = None
         self.assertEqual(exp, act)
+
+
+class ParseLevelNameTest(unittest.TestCase):
+
+    def test_none(self):
+        sentinel = object()
+        (lvl, err) = logging.parse_level_name(None, sentinel)
+        self.assertIs(lvl, sentinel)
+        self.assertIsNone(err)
+
+    def test_non_string(self):
+        sentinel = object()
+        (lvl, err) = logging.parse_level_name(54321, sentinel)
+        self.assertIs(lvl, sentinel)
+        self.assertIsNotNone(err)
+
+    def test_unrecognized(self):
+        sentinel = object()
+        (lvl, err) = logging.parse_level_name('asdf', sentinel)
+        self.assertIs(lvl, sentinel)
+        self.assertIsNotNone(err)
+
+    def test_strip_whitespace(self):
+        sentinel = object()
+        (lvl, err) = logging.parse_level_name('\t fatal\n', sentinel)
+        self.assertEqual(logging.FATAL, lvl)
+        self.assertIsNone(err)

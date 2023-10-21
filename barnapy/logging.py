@@ -229,14 +229,44 @@ def log_runtime_environment(
             continue
         logger.log(level, message, function())
 
-# Names of logging levels
-level_names = {
-    'CRITICAL',
-    'FATAL',
-    'ERROR',
-    'WARN',
-    'WARNING',
-    'INFO',
-    'DEBUG',
-    'NOTSET',
+
+"""
+Names of recognized logging levels and their corresponding level numbers
+"""
+name2level = {
+    'critical': CRITICAL,
+    'fatal': FATAL,
+    'error': ERROR,
+    'warn': WARNING,
+    'warning': WARNING,
+    'info': INFO,
+    'debug': DEBUG,
+    'notset': NOTSET,
 }
+for (name, level) in list(name2level.items()):
+    name2level[name.upper()] = level
+
+
+def parse_level_name(
+        name: str | None,
+        default: int=None,
+) -> tuple[int | None, str | None]:
+    """
+    Interpret the given name as a log level name and return the
+    corresponding log level number in a (level number, error message)
+    pair.
+
+    Per Go error handling style, if there was an error, then the message
+    explains it.  Otherwise, `None` indicates no error.
+    """
+    if name is None:
+        return (default, None)
+    if not isinstance(name, str):
+        return (default, f'Log level name is not a string: {name!r}')
+    name = name.strip()
+    level = name2level.get(name.lower())
+    if level is None:
+        names = ', '.join(name2level.keys())
+        return (default, f'Unrecognized log level name: {name!r}\n'
+                f'  Expected one of: {names}')
+    return (level, None)
