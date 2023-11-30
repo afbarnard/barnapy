@@ -152,8 +152,9 @@ Continuing from p. 70 for specifying CSV Format
 Thoughts / Decisions After Above 2 Design Sessions
 --------------------------------------------------
 
-* [from the beginning] format should be specifiable separately from the
-  file and be `cat`-able, e.g., `cat fmt file`, just like a binary header
+* [I've been thinking from the beginning] format should be specifiable
+  separately from the file and be `cat`-able, e.g., `cat fmt file`, just
+  like a binary header
 
 * support column- / field-specific options to allow data that involve
   varying levels of parsing complexity, e.g., Python literals, JSON,
@@ -161,7 +162,8 @@ Thoughts / Decisions After Above 2 Design Sessions
 
   * allow data type to determine parsing options
 
-* support specifying as a string on the command line
+* support specifying as a string on the command line (should work well
+  embedded in shell syntax)
 
 * support arbitrary user-specified properties
 
@@ -187,7 +189,8 @@ Thoughts / Decisions After Above 2 Design Sessions
   inserts, and various plain text tables
 
   * supporting plain text tables needs ability to append lines to
-    existing fields
+    existing fields (subsequent lines from table cells with wrapped
+    text)
 
 * support non-human numbers of fields / columns (e.g., genomics,
   transposed time series)
@@ -222,8 +225,8 @@ Design by Examples
 
   * need to absorb any trailing newline
 
-  * no identifier & paired dlm necessary.  in that case, k-v sep is
-    terminator.
+  * no identifier & paired dlm necessary.  in that case, final k-v sep
+    is terminator.
 
 * minimal fmt hdr
 
@@ -233,6 +236,8 @@ Design by Examples
 
   * obviously, this can default to current version of library and thus
     be omitted entirely
+
+    * thus, header being just a value implies prefix of `csv-0.0.1:`
 
   * -> empty fmt hdr should be valid fmt hdr
 
@@ -351,7 +356,154 @@ Design by Examples
 
 * sequences
 
-* alternatives
+  * separate by whitespace or commas
+
+    ```
+    a b c d
+    ``` ```
+    a,b,c,d
+    ``` ```
+    a, b, c, d
+    ```
+
+  * every value is a sequence of words (seems more natural than
+    requiring some sort of syntax to indicate a sequence, especially
+    since a single word of multiple characters could be interpreted as a
+    sequence of characters when warranted)
+
+    * next key or newline ends value (this allows ending values without
+      structural delimiters)  TODO? semicolon for ending, too?
+
+    * all words accumulate onto last key
+
+      ```
+      a: b c d= e f: g h i j=klm
+      ```
+
+      this is similar to CLI, except that keys are indicated by a k-v
+      sep suffix rather than a `-` or `--` prefix; also no positional
+      args
+
+      * what do do about initial words with no key, e.g.,
+
+        ```
+        a=( b c d: e f )     # ? `{'a': {None: ['b', 'c'], 'd': ['e', 'f']}}`?
+        ``` ```
+        a=( b c d e f )      # just list: `{'a': ['b', 'c', 'd', 'e', 'f']}`
+        ``` ```
+        a=( b: c d: e f )    # just dict: `{'a': {'b': ['c'], 'd': ['e', 'f']}}`
+        ```
+
+  * either paired delimiters needed for structure or need to require
+    quoting empty strings (first example text below is equivalent to
+    second text, not third) (it's possible to interpret like third by
+    interpreting subsequent keys as nesting)
+
+    ``` ```
+    a: b= c: d          # `{'a': [], 'b': [], 'c': ['d']}`?
+                        # `{'a': None, 'b': None, 'c': ['d']}`?
+    ``` ```
+    a: '' b= '' c: d    # `{'a': [''], 'b': [''], 'c': ['d']}`
+    ``` ```
+    a:(b=(c: d))        # `{'a': {'b': {'c': ['d']}}}`
+    ```
+
+    note the first could be "shortened" (written without whitespace) to
+
+    ```
+    a:,b=,c:d
+    ```
+
+    or expanded to
+
+    ```
+    a : b = c : d
+    ```
+
+  * putting this together suggests this tokenizing priority: quotes,
+    structure, words
+
+  * syntax is not sensitive to whitespace (whitespace is not relevant to
+    syntax except to separate words)
+
+  * the content defines the data structure, not the delimiters
+    (structural delimiters shouldn't be necessary except to avoid
+    ambiguity)
+
+* alternatives (a sequence where membership matters and not necessarily
+  order, so sets?)
+
+  ```
+  rs = \r\n | \n\r | \r | \n
+  ``` ```
+  nl : \r\n / \n\r / \r / \n
+  ``` ```
+  fs:,/|/;
+  ``` ```
+  fs=,|'|'|;
+  ```
+
+  * this suggests `|` and `/` are actually sequence separators rather
+    than paired delimiters, which makes more sense (`\` is escape)
+
+  * first `|` or `/` encountered after first character is separator
+
+    * permit empty trailing elements? yes, à la `,` in Python (this also
+      ends up being in analogy to trailing whitespace, which is
+      typically allowed and is not an error even though it separates
+      items otherwise)
+
+      ```
+      fs = /|    # `'fs': {'/'}`
+      ``` ```
+      fs = |/    # `'fs': {'|'}`
+
+  * are the above strings interpreted as raw or as escaped?: `r'\r\n'`
+    vs `'\r\n'`
+
+* escaping: explicit or implicit?  regardless, need way to distinguish
+  "raw" and "interpreted" strings.
+
+  `\r\n` `\\r\n` `r'\r\n'` `\'\r\n'`
+
+  * probably ought to default to interpreting escapes as that is the
+    most common, especially if trying to avoid quoting words
+
+  * prefix character seems to be common approach (but is always adjoined
+    by a quote).  prefix is appropriate as determines how following
+    string interpreted.  prefix character should make sense without
+    quotes, e.g., `.\rawstri\ng` / `-\rawstri\ng` / `+\rawstri\ng`
+    (actually `+`/`-` are bad choices as they are commonly prefix
+    characters).  maybe one of `=:` makes more sense but that interacts
+    with k-v seps.  the other punctuation that stands out to me is `!`.
+
+    `!\` `!'\'` `!\t` `'!'` `.\` `.\r\n` `..` `.0`
+
+    `~` implies approximation or matching, `?` implies matching, `$`
+    implies substitution, `@` implies reference or membership, `#`
+    implies comment, other punctuation are commonly operators
+
+* named paired delimiters (structural delimiters)
+
+  `:xyz( )xyz:` `.xyz( )xyz.`
+
+  * parse respecting or ignoring intervening quotes / structure?
+    ignoring makes it easier to skip over intervening content but
+    introduces mixed parsing modes (`(` opens a structure sensitive to
+    intervening content, but `.(` opens a structure insensitive to
+    intervening content)
+
+  * empty name is valid, e.g., `.(`
+
+  * name-delimiter pairs do not need to be unique.  e.g., the following
+    are valid and complete
+
+    `.(.[.<.{}.>.].).` `.()..()..().`
+
+    (I'm not sure what the semantics are, however.  An empty list?
+    None?  Probably none / nothing / nil / null.  The delimiters are
+    just delimiters, so, contrary to Python, they don't signify the
+    construction of a data structure.)
 
 * format header value is JSON or YAML
 
@@ -372,10 +524,118 @@ Design by Examples
 
   * max record size
 
-  * round trip
+  * round trip (concrete syntax tree)
 
   * unopened structure
 
   * on error
 
   * text encoding
+
+
+Design (Syntax & Semantics)
+---------------------------
+
+* characters
+
+  * key-value separators: `:` | `=`
+
+  * sequence separator: r'\s+' | `,` | `|` | `/`
+
+  * quotes: `'` | `"` | ‘`’
+
+    * named quote (raw content): `.''.` | `."".` | ‘.``.’
+
+    * by analogy, a word that starts with `.` is a raw word
+
+  * structural / paired delimiters: `()` | `[]` | `{}` | `<>`
+
+    * named delimiters: `.().` | `.[].` | `.{}.` | `.<>.`
+
+  * escape: `\`
+
+    removes special meaning of all above characters, plus supports the
+    following escape sequences:
+
+    `\a` `\b` `\f` `\n` `\r` `\t` `\v` `\xHH` `\uHHHH` `\UHHHHHHHH`
+
+    any other backslash sequence is left as is.  (I'm not doing octal.)
+
+    (semantics are as for C, Bash, Python, Java, Julia, etc.)
+
+    TODO? support `\<newline>` (for multiline string literals)
+
+* words
+
+  the tokens remaining after splitting by above characters
+
+TODO how write a paragraph of text, e.g., for data / column description?  (like YAML wrapped / preformatted strings)  (interacts with newlines)  (maybe explicit end syntax (;) instead of newline? in addition to newline?)  -> how long do values continue?  as long as possible, but control overall length?  as short as possible but extend length?  as long as possible seems more human: we go until we reach a separator.  how much of a chunk to digest off the top is a separate issue.  document delimiters like YAML? - no, already have named structure which can be used for document delimiters
+
+* have data language (like JSON or YAML) that is separate from use in
+  specifying CSV header: Parasol, a rich and simple options language
+
+  * parasol-schema: writing a schema for valid parasol data in parasol
+
+* dictionary that allows repeated keys
+
+  * allows keeping order while assigning to default key (none / nil)
+
+  * options for assigning values to keys: none, first, all
+
+  * represented as list of (key, values) pairs with mapping from key to
+    indices of its pairs
+
+TODO? syntax for options on how to interpret a block? (options for semantics of a block) maybe `.asdf(:(accumulate=none) ... )asdf.`  (empty key has special meaning?) postfix?: `.asdf( ... )asdf.:(accumulate=none)` (I would prefer prefix.)  I'm tempted to put options into name, e.g., `.asdf:(accumulate=none)( ... )asdf.`, but that breaks visual balance and makes it harder for other tools to skip.
+
+option to "relax" errors into normal words?  e.g., interpret `.z(` in `.a( .z( )a.` as a normal word rather than an error?  option could be 'unmatched: error / warning / drop / word / handle', and could be paired with option specifying handler.  If so, how recover, exactly?  Re-parse after dropping / treating as word?  Basically, just insert would-be content into surrounding context, like flattening.
+
+if a data language, then text is data, how embed text? (including self and other computer languages)  allow arbitrarily repeated quotes? e.g.,
+
+    ``` ... ```
+    ''' ... '''
+    "" ... ""
+    .python````` ... `````python.
+
+    (also, support weirder identifiers? e.g., `.-----( ... )-----.`)
+
+    * not arbitrarily repeated quotes: must be odd number, or at least
+      not 2 in a row, because need to distinguish from empty strings: ''
+      / "" / ``.  How interpret larger multiples of 2?  Languages with
+      triple-quoted strings suggest divide by 2.  But what if number of
+      successive quotes divisible by higher powers of 2, like 4?  Is
+      `''''` 2 empty strings next to each other?  (It can't be 1 empty
+      string delimited by `''` and `''`, because `''` is not allowed to
+      be quotation delimiter.)  Perhaps any even number of successive
+      quotes just evaluates to the empty string because recursively
+      dividing by 2 results in just a bunch of adjacent empty strings
+      which concatenate to the empty string.  Maybe just allow single-
+      and triple-quoted strings then, as that can be parsed as a stream.
+      Or maybe allow small odd numbers, like 1, 3, 5 or 1, 3, 5, 7, 9.
+      Or just have option for controlling limit?  Or just go with 1, 3
+      and named quotes?
+
+quotes allow options?  (no; don't want to have to escape initial `:`)
+
+    ```:(lang=python)print('Hello, world!')```
+
+only named quotes allow options?  (yes)
+
+    .```:(lang=python)print('Hello, world!')```.
+
+    more reasonably / idiomatically:
+
+    .```:(lang=python, wrap=pre, indent=strip)
+    print('Hello, world!')
+    ```.
+
+proposal: "meta-options" / processing directives / ??? can be specified for any named quote / structure, indicated by initial (raw) `:` (whitespace may precede to allow specifying on next line, for example), value is only one object (word / structure)
+
+  * implemented as 2 special keys?  one for "meta-options" and one for
+    "positional" arguments
+
+what are "meta-options" even good for?  one good example is how to treat (post-process) a bunch of text: dedenting, re-wrapping vs. pre-formatted, etc.  This allows having different types of text blocks like YAML without needing separate / special syntaxes.  One thing I'm less fond of is changing the accumulation, but this could have legitimate uses and is more OK because it changes the semantics, not the syntax.  (With multi-key dicts, the default accumulation can be converted to any other accumulation anyway, since position is preserved.)
+
+format for matrix / table à la Julia? (meta-option for interpreting newlines as row separators)
+
+separate data language from CSV header; also allow JSON, YAML; API just takes dict with 1 key 'ahsv' (or whatever)
+what to call data language? quote-lite data structures (qlds), shell data structures (shds) [no, confusing wrt shell syntax], human-readable data structures, data language?, human-readable data language (hurdle?), quick write data language done without quotes (qwdldwq), quick-write data language without quotes (qwdlwq) "Quiddlewick" -> British "Quiddle'ick", "War'ick", "Ber'ick", etc.
