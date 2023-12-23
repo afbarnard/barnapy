@@ -211,3 +211,105 @@ class RangePatternsTest(unittest.TestCase):
             with self.subTest(txt):
                 match = parse.float_range_pattern.fullmatch(txt)
                 self.assertIsNone(match)
+
+
+class DateTimePatternsTest(unittest.TestCase):
+
+    date_ymd_strs = [
+        f'{sign}{year}{sep}{month}{sep}{day}'
+        for year in ['0', '0000']
+        for month in ['0', '00']
+        for day in ['0', '00']
+        for sep in '/- .'
+        for sign in ['', '+', '-']
+    ]
+
+    not_date_ymd_strs = [
+        '-00-00', '-1-1-', '123-456-7890', '+1-123-456-7890',
+        '20231222', '2023.12.222', '2023/123/22', '2023/12.22', '2023y12m22',
+        '12/22/2023', '22-dec-2023', '2O23_12_22',
+    ]
+
+    time_strs = [
+        f'{hours}{sep}{minutes}{ampm}{zone}'
+        for hours in ['0', '00']
+        for minutes in ['00']
+        for sep in ':hH'
+        for ampm in ['', 'am', ' P.M.']
+        for zone in ['', '+1234', ' -9876']
+    ] + [
+        f'{hours}{seps[0]}{minutes}{seps[1]}{seconds}{fractions}{ampm}{zone}'
+        for hours in ['0', '00']
+        for minutes in ['00']
+        for seconds in ['00']
+        for fractions in ['', '.0', '.12345']
+        for seps in ['::', 'hm', 'HM']
+        for ampm in ['', 'am', ' P.M.']
+        for zone in ['', '+1234', ' -9876']
+    ]
+
+    not_time_strs = [
+        '000:00', '12:34:567', '12:34:56.',
+        # TODO? '12h34:56', '12:34m56',
+        '12:34:56 a.m', '12:34:56pn', '12h34m56.am', '12:34:56.789 P.M',
+        '12:34:56.789 AM +123', '12:34:56.789 p.m. -12345',
+    ]
+
+    timedelta_strs = [
+        f'{sign}{yr}{wk}{dy}{hr}{min}{sec}'
+        for sign in ['', '-', '+']
+        for yr in ['', '3y', '12.3 years ']
+        for wk in ['', '22w', '92.4 weeks ']
+        for dy in ['', '5d', '4.9 days ']
+        for hr in ['', '12h', '3.21 hours ']
+        for min in ['', '9m', '78.9 minutes ']
+        for sec in ['', '1s', '12345.09876 seconds ']
+    ]
+
+    not_timedelta_strs = [
+        '1y2w3d4h5ms', '1y 2w 3d 4h 5m s', '1', '+1', '-1', '1.1', '1.s',
+        '-2.1ys', '+1.2 ys',
+    ]
+
+    def _test_matches(self, pattern, *strs):
+        for txt in itools.chain.from_iterable(strs):
+            with self.subTest(txt):
+                self.assertIsNotNone(pattern.fullmatch(txt))
+
+    def _test_non_matches(self, pattern, *strs):
+        for txt in itools.chain.from_iterable(strs):
+            with self.subTest(txt):
+                self.assertIsNone(pattern.fullmatch(txt))
+
+    def test_date_ymd(self):
+        self._test_matches(parse.date_ymd_pattern, self.date_ymd_strs)
+
+    def test_not_date_ymd(self):
+        self._test_non_matches(
+            parse.date_ymd_pattern, self.not_date_ymd_strs,
+            self.time_strs, self.not_time_strs,
+            self.timedelta_strs, self.not_timedelta_strs,
+        )
+
+    def test_time(self):
+        self._test_matches(parse.time_pattern, self.time_strs)
+
+    def test_not_time(self):
+        self._test_non_matches(
+            parse.time_pattern, self.not_time_strs,
+            self.date_ymd_strs, self.not_date_ymd_strs,
+            self.timedelta_strs, self.not_timedelta_strs,
+        )
+
+    def test_timedelta(self):
+        self._test_matches(parse.timedelta_pattern, self.timedelta_strs)
+
+    def test_not_timedelta(self):
+        self._test_non_matches(
+            parse.timedelta_pattern, self.not_timedelta_strs,
+            self.date_ymd_strs, self.not_date_ymd_strs,
+            self.time_strs, self.not_time_strs,
+        )
+
+    def test_is_timedelta(self):
+        self.assertFalse(parse.is_timedelta(''))

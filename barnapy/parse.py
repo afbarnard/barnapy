@@ -1,6 +1,6 @@
 """
 Parse atomic and compound literals using functions and algorithms
-for parsing lexical analysis.
+for parsing and lexical analysis.
 
 The parsing functions do not throw exceptions to indicate their
 inability to parse a given text.  This is for flexibility and
@@ -16,7 +16,7 @@ Functions that do not use Go style return a sentinel value.
 Requires Python >= 3.4 for `re.fullmatch`.
 """
 
-# Copyright (c) 2015-2020 Aubrey Barnard.
+# Copyright (c) 2015-2020, 2023 Aubrey Barnard.
 #
 # This is free software released under the MIT license.  See LICENSE for
 # details.
@@ -196,8 +196,39 @@ integer_range_pattern = re.compile('({0})?:({0})?'.format(integer_pattern.patter
 float_range_pattern = re.compile('({0})?:({0})?'.format(float_pattern.pattern))
 
 
-# Dates and times
+ #### Patterns for Dates & Times ####
 
+
+"""Pattern that matches dates in year-month-day order."""
+date_ymd_pattern = re.compile(
+    r'(?P<sign>[-+])?(?P<year>\d+)(?P<d_sep>[^:\d])(?P<month>\d{1,2})'
+    r'(?P=d_sep)(?P<day>\d{1,2})'
+)
+
+"""
+Pattern that matches times, including with fractional seconds and
+optional time zone.
+"""
+time_pattern = re.compile(
+    r'(?P<hour>\d{1,2})(?P<t_sep>[:h])(?P<minute>\d{2})'
+    r'(?:[:m](?P<second>\d{2})(?:[.,](?P<fractional_second>\d+))?)?'
+    r'\s*(?:am|pm|a\.m\.|p\.m\.)?'
+    r'\s*(?P<tz>[+-]\d{4})?',
+    re.IGNORECASE,
+)
+
+"""
+Pattern that matches ISO and similar timestamps that have a date,
+time, and optional timezone.
+"""
+datetime_pattern = re.compile(
+    date_ymd_pattern.pattern +
+    r'(?P<ts_sep>.)' +
+    time_pattern.pattern
+)
+
+# TODO? strict pattern for ISO timestamps (i.e., rename below)
+# TODO @deprecated
 """Pattern that matches various timestamps"""
 timestamp_pattern = re.compile(
     r'(?P<year>\d{4})(?P<d_sep>\D?)(?P<month>\d{2})(?P=d_sep)(?P<day>\d{2})'
@@ -205,6 +236,23 @@ timestamp_pattern = re.compile(
     r'(?P<hour>\d{2})(?P<t_sep>\D?)(?P<minute>\d{2})(?P=t_sep)(?P<second>\d{2})'
     r'(?:[.,](?P<fractional_second>\d+))?(?P<tz>[+-]\d{4})?'
     )
+
+"""
+Pattern that matches amounts of time.  (Make sure to test that match
+group 'delta' isn't empty, though.)
+"""
+timedelta_pattern = re.compile(
+    r'(?P<sign>[-+])?(?P<delta>'
+    r'(?P<years>\d+(?:[.,]\d+)?\s*y(?:(?:ea)?rs?)?\s*)?'
+    r'(?P<weeks>\d+(?:[.,]\d+)?\s*w(?:(?:ee)?ks?)?\s*)?'
+    r'(?P<days>\d+(?:[.,]\d+)?\s*d(?:a?ys?)?\s*)?'
+    r'(?P<hours>\d+(?:[.,]\d+)?\s*h(?:(?:ou)?rs?)?\s*)?'
+    r'(?P<mins>\d+(?:[.,]\d+)?\s*m(?:in(?:ute)?s?)?\s*)?'
+    r'(?P<secs>\d+(?:[.,]\d+)?\s*s(?:ec(?:ond)?s?)?\s*)?'
+    r')',
+    re.IGNORECASE,
+)
+
 
 # Constants
 
@@ -686,6 +734,39 @@ def pyliteral_err(text, default=None):
 # Dates and times
 
 
+def is_date(text: str) -> bool:
+    """Whether the given text can be parsed as a date."""
+    return date_ymd_pattern.fullmatch(text.strip()) is not None
+
+def date(text: str, default=None) -> datetime.date: # TODO
+    return NotImplemented
+
+def date_err(text: str) -> tuple[datetime.date,ParseError]: # TODO
+    return NotImplemented
+
+
+def is_time(text: str) -> bool:
+    """Whether the given text can be parsed as a time."""
+    return time_pattern.fullmatch(text.strip()) is not None
+
+def time(): # TODO
+    return NotImplemented
+
+def time_err(): # TODO
+    return NotImplemented
+
+
+def is_datetime(text: str) -> bool:
+    """Whether the given text can be parsed as a datetime (timestamp)."""
+    return datetime_pattern.fullmatch(text.strip()) is not None
+
+def datetime(): # TODO
+    return NotImplemented
+
+def datetime_err(): # TODO
+    return NotImplemented
+
+
 def timestamp(text, default=None):
     match = timestamp_pattern.fullmatch(text.strip())
     if match is None:
@@ -725,3 +806,15 @@ def timestamp(text, default=None):
                      else 0),
         tzinfo=tz,
         )
+
+
+def is_timedelta(text: str) -> bool:
+    """Whether the given text can be parsed as a time delta."""
+    match = timedelta_pattern.fullmatch(text.strip())
+    return match is not None and len(match.group('delta')) > 0
+
+def timedelta(): # TODO
+    return NotImplemented
+
+def timedelta_err(): # TODO
+    return NotImplemented
