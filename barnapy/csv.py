@@ -15,31 +15,33 @@ import re
 
 from . import parse
 
-def parse_csv_dialect(chars):
+
+def parse_format(chars) -> dict:
     """
-    Interpret the given string as a dialect for the Python CSV
-    module.
+    Interpret the given string as a CSV format specification (syntax
+    specification or "dialect") for the Python CSV module.
 
-    As few or as many characters as desired can be given; any dialect
-    parameter not specified will not be included in the dialect.  This
-    allows default parameter values, such as those specified in the
-    Python CSV module, to "show through".  This is intended to make CSV
-    dialects easy to specify on the command line.
+    A CSV format specification is a mapping from format parameter names
+    to values [1].  As few or as many characters as desired can be
+    given; any format parameter not specified will not be included in
+    the format.  This allows default parameter values, such as those
+    specified in the Python CSV module, to "show through".  This is
+    intended to make CSV formats easy to specify on the command line.
 
-    Character.  Dialect Parameter.
+    Character.  Format Parameter.
     1. Delimiter.
-    2. Quote character.
-    3. Doubling or escaping: d=doubling, e=escaping.
-       ('doublequote' parameter)
-    4. Escape character.  Space (`' '`) means `None` [1].
-    5. Quoting mode: m=minimal, a=all, n=none, o=objects (non-numeric
-       values).
-    6. Whether to trim (strip) whitespace from values: t=trim, k=keep.
-       ('skipinitialspace' parameter)
-    7. Whether all records need to have the same length: s=strict,
-       l=loose.  ('strict' parameter)
-    8. Line terminator (for the writer).  String of all remaining
-       characters.
+    2. Quote character ('quotechar').
+    3. Doubling or escaping ('doublequote'): d=doubling, e=escaping.
+    4. Escape character ('escapechar').  Space (`' '`) means `None` [2],
+       which disables escaping.
+    5. Quoting mode ('quoting'): m=minimal, a=all, n=none, o=objects
+       (non-numeric values).
+    6. Whether to trim (strip) whitespace from values
+       ('skipinitialspace'): t=trim, k=keep.
+    7. Whether all records need to have the same length ('strict'):
+       s=strict, l=loose.
+    8. Line terminator (for the writer) ('lineterminator').  String of
+       all remaining characters.
 
 
     ### Examples ###
@@ -54,7 +56,9 @@ def parse_csv_dialect(chars):
     `'\\t"D OKS\\r'`: Excel-like TSV on old Mac.
 
 
-    [1] While NUL (`'\\x00'`) would be a natural candidate for
+    [1] https://docs.python.org/3/library/csv.html#dialects-and-formatting-parameters
+
+    [2] While NUL (`'\\x00'`) would be a natural candidate for
         representing `None`, there are many problems with having NUL
         bytes in strings due to their prevailing use as string
         terminators.  For example, strings including NUL are not
@@ -65,59 +69,61 @@ def parse_csv_dialect(chars):
         here.  The consequence is that a space cannot be an escape
         character (which seems extremely reasonable).
     """
-    dialect = {}
+    format = {}
     if len(chars) >= 1:
-        dialect['delimiter'] = chars[0]
+        format['delimiter'] = chars[0]
     if len(chars) >= 2:
-        dialect['quotechar'] = chars[1]
+        format['quotechar'] = chars[1]
     if len(chars) >= 3:
         if chars[2] in ('d', 'D'):
-            dialect['doublequote'] = True
+            format['doublequote'] = True
         elif chars[2] in ('e', 'E'):
-            dialect['doublequote'] = False
+            format['doublequote'] = False
         else:
             raise ValueError(
-                "Unrecognized CSV dialect parameter: doubling or escaping: "
+                "Unrecognized CSV format parameter: doubling or escaping: "
                 f"'{chars[2]}' (not 'd' or 'e')")
     if len(chars) >= 4:
         if chars[3] == ' ':
-            dialect['escapechar'] = None
+            format['escapechar'] = None
         else:
-            dialect['escapechar'] = chars[3]
+            format['escapechar'] = chars[3]
     if len(chars) >= 5:
         if chars[4] in ('m', 'M'):
-            dialect['quoting'] = csv.QUOTE_MINIMAL
+            format['quoting'] = csv.QUOTE_MINIMAL
         elif chars[4] in ('a', 'A'):
-            dialect['quoting'] = csv.QUOTE_ALL
+            format['quoting'] = csv.QUOTE_ALL
         elif chars[4] in ('n', 'N'):
-            dialect['quoting'] = csv.QUOTE_NONE
+            format['quoting'] = csv.QUOTE_NONE
         elif chars[4] in ('o', 'O'):
-            dialect['quoting'] = csv.QUOTE_NONNUMERIC
+            format['quoting'] = csv.QUOTE_NONNUMERIC
         else:
             raise ValueError(
-                "Unrecognized CSV dialect parameter: quoting mode: "
+                "Unrecognized CSV format parameter: quoting mode: "
                 f"'{chars[4]}' (not 'm', 'a', 'n', or 'o')")
     if len(chars) >= 6:
         if chars[5] in ('k', 'K'):
-            dialect['skipinitialspace'] = False
+            format['skipinitialspace'] = False
         elif chars[5] in ('t', 'T'):
-            dialect['skipinitialspace'] = True
+            format['skipinitialspace'] = True
         else:
             raise ValueError(
-                "Unrecognized CSV dialect parameter: trim space: "
+                "Unrecognized CSV format parameter: trim space: "
                 f"'{chars[5]}' (not 'k' or 't')")
     if len(chars) >= 7:
         if chars[6] in ('l', 'L'):
-            dialect['strict'] = False
+            format['strict'] = False
         elif chars[6] in ('s', 'S'):
-            dialect['strict'] = True
+            format['strict'] = True
         else:
             raise ValueError(
-                "Unrecognized CSV dialect parameter: strict length: "
+                "Unrecognized CSV format parameter: strict length: "
                 f"'{chars[6]}' (not 'l' or 's')")
     if len(chars) >= 8:
-        dialect['lineterminator'] = chars[7:]
-    return dialect
+        format['lineterminator'] = chars[7:]
+    return format
+
+parse_csv_dialect = parse_format # TODO deprecate
 
 
 ##### Format and Header Detection #####

@@ -14,19 +14,19 @@ import unittest
 from .. import csv
 
 
-class ParseCsvDialectTest(unittest.TestCase):
+class ParseFormatTest(unittest.TestCase):
 
 # >>> ''.join((random.choice(',;.:|-\t '), random.choice('"\'`/'), random.choice('dDeE'), random.choice(' \\^~!'), random.choice('mMaAnNoO'), random.choice('kKtT'), random.choice('lLsS'), random.choice(['\n', '\r', '\r\n', '\n\r'])))
 
     def do_test(self, vals_specs, opt_key):
         for val_spec in vals_specs:
             (opt_val, spec) = val_spec
-            dialect = csv.parse_csv_dialect(spec)
-            self.assertIn(opt_key, dialect)
-            self.assertEqual(opt_val, dialect[opt_key], val_spec)
+            format = csv.parse_format(spec)
+            self.assertIn(opt_key, format)
+            self.assertEqual(opt_val, format[opt_key], val_spec)
 
     def test_empty(self):
-        self.assertEqual({}, csv.parse_csv_dialect(''))
+        self.assertEqual({}, csv.parse_format(''))
 
     def test_delimiter(self):
         vals_specs = [
@@ -55,7 +55,7 @@ class ParseCsvDialectTest(unittest.TestCase):
         ]
         self.do_test(vals_specs, 'doublequote')
         with self.assertRaises(ValueError):
-            csv.parse_csv_dialect(',"f')
+            csv.parse_format(',"f')
 
     def test_escape_character(self):
         vals_specs = [
@@ -80,7 +80,7 @@ class ParseCsvDialectTest(unittest.TestCase):
         ]
         self.do_test(vals_specs, 'quoting')
         with self.assertRaises(ValueError):
-            csv.parse_csv_dialect('|`D~P')
+            csv.parse_format('|`D~P')
 
     def test_trim(self):
         vals_specs = [
@@ -91,7 +91,7 @@ class ParseCsvDialectTest(unittest.TestCase):
         ]
         self.do_test(vals_specs, 'skipinitialspace')
         with self.assertRaises(ValueError):
-            csv.parse_csv_dialect(',"d~nS')
+            csv.parse_format(',"d~nS')
 
     def test_strict(self):
         vals_specs = [
@@ -102,7 +102,7 @@ class ParseCsvDialectTest(unittest.TestCase):
         ]
         self.do_test(vals_specs, 'strict')
         with self.assertRaises(ValueError):
-            csv.parse_csv_dialect(" 'D~nkr")
+            csv.parse_format(" 'D~nkr")
 
     def test_eol(self):
         vals_specs = [
@@ -115,7 +115,7 @@ class ParseCsvDialectTest(unittest.TestCase):
         self.do_test(vals_specs, 'lineterminator')
 
     def test_doc_string_examples(self):
-        specs_dialects = [
+        specs_formats = [
             (',"d mkl\r\n', dict(
                 delimiter=',',
                 quotechar='"',
@@ -158,9 +158,9 @@ class ParseCsvDialectTest(unittest.TestCase):
             )),
         ]
         self.maxDiff = None
-        for spec_dlct in specs_dialects:
+        for spec_dlct in specs_formats:
             (spec, dlct) = spec_dlct
-            self.assertEqual(dlct, csv.parse_csv_dialect(spec), spec_dlct)
+            self.assertEqual(dlct, csv.parse_format(spec), spec_dlct)
 
 
 class HeaderDetectionTest(unittest.TestCase):
@@ -188,7 +188,7 @@ class HeaderDetectionTest(unittest.TestCase):
     @staticmethod
     def _read_recs(text, csv_fmt='|"e\\mkl\n'):
         ifile = io.StringIO(text)
-        fmt = csv.parse_dialect(csv_fmt)
+        fmt = csv.parse_format(csv_fmt)
         recs = list(pycsv.reader(ifile, **fmt))
         return recs
 
@@ -241,7 +241,7 @@ class HeaderDetectionTest(unittest.TestCase):
                 self.assertEqual(score, act)
 
     def test_detect_header(self):
-        csv_fmt = csv.parse_dialect('|"e\\mkl\n')
+        csv_fmt = csv.parse_format('|"e\\mkl\n')
         for text_hashdr in [
                 (self.decls_hdr, True),
                 (self.names_hdr, True),
