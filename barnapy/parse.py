@@ -22,6 +22,7 @@ Requires Python >= 3.4 for `re.fullmatch`.
 # details.
 
 
+from collections.abc import Callable, Iterable
 import ast
 import builtins
 import enum
@@ -510,8 +511,9 @@ def array_index_err(text):
         return result, None
 
 
-# General parsing algorithm
+# General parsing
 
+# TODO @deprecated  # TODO remove in version XXX
 def parse(text, detectors, constructors, default=None):
     """
     Parse the given text and construct a value.
@@ -538,6 +540,50 @@ def parse(text, detectors, constructors, default=None):
             return constructor(text), None
     # Otherwise return default
     return default, ParseError('Cannot parse', text)
+
+
+def mk_match(*matchers: Callable[[str],bool]) -> Callable[[str],int]:
+    """
+    Make a function for matching text from the given sequence of
+    matchers.
+
+    The returned function applies the given matchers (functions for
+    matching text) in order and returns the index of the first matcher
+    that matches the text or `None` otherwise.
+    """
+    matchers = list(matchers)
+    def match(text: str) -> int:
+        for (idx, matcher) in enumerate(matchers):
+            if matcher(text):
+                return idx
+        return None
+    return match
+
+
+def mk_match_and_construct(
+        *matchers_constructors: tuple[
+            Callable[[str],bool],
+            Callable[[str],tuple[object,ParseError]],
+        ],
+) -> Callable[[str],tuple[int,object,ParseError]]:
+    """
+    Make a function for matching text and constructing a value from that text.
+
+    The returned function applies the given matchers (functions for
+    matching text) in order and returns the index of the first matcher
+    that matches and the result of applying the corresponding
+    constructor, where the constructor returns a (value, error) pair per
+    Go style.  These are returned as the triple (index, constructed
+    value, error).  If there is no match, `(None, None, None)` is
+    returned.
+    """
+    def match_and_construct(text: str) -> tuple[int,object,ParseError]:
+        for (idx, (matcher, constructor)) in enumerate(matchers_constructors):
+            if matcher(text):
+                (val, err) = constructor(text)
+                return (idx, val, err)
+        return (None, None, None)
+    return match_and_construct
 
 
 # Detecting and parsing various atomic literals (atoms)
