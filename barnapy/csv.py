@@ -10,7 +10,10 @@ formats.
 
 
 import csv
+import io
+import re
 
+from . import parse
 
 def parse_csv_dialect(chars):
     """
@@ -115,3 +118,171 @@ def parse_csv_dialect(chars):
     if len(chars) >= 8:
         dialect['lineterminator'] = chars[7:]
     return dialect
+
+
+##### Format and Header Detection #####
+
+ #### Format Detection ####
+
+
+def detect_format(delimited_text: str) -> dict:
+    """
+    Try to detect the format parameters of the given (sample of)
+    delimited text.  Return a dictionary of only those CSV module format
+    parameters that were actually detected.
+
+    This is a replacement for `csv.Sniffer` that avoids returning
+    default parameters when they weren't explicitly detected.
+    """
+    # Based on 'fitamord.delimited.Format.detect'.
+    # Detect delimiter and quoting using the Sniffer internals to avoid
+    # defaulting of quote character.  (This follows
+    # 'csv.Sniffer.sniff'.)
+    sniffer = csv.Sniffer()
+    (quote_char, doubling, delimiter, skip_space) = (
+        sniffer._guess_quote_and_delimiter(delimited_text, None))
+    if delimiter:
+        # Only return what was actually detected
+        return dict(
+            delimiter=delimiter,
+            quotechar=quote_char if quote_char != '' else None,
+            doublequote=doubling,
+            skipinitialspace=skip_space,
+        )
+    # That didn't work because no quotes.  Try again.
+    (delimiter, skip_space) = sniffer._guess_delimiter(delimited_text, None)
+    if delimiter:
+        # Only return what was actually detected
+        return dict(
+            delimiter=delimiter,
+            skipinitialspace=skip_space,
+        )
+    # If that also didn't work, give up and return what was detected
+    # (nothing)
+    return {}
+
+
+ #### Header Detection ####
+
+  ### Heuristics ###
+
+
+_col_decl_pattern = re.compile(
+    r'{0}[?!]?(?:\s*:\s*{0}(?:\s*\|\s*{0})*)?'.format(r'[a-zA-Z_]\w*')
+)
+
+def header_heuristic__declarations(header: list[str]) -> float:
+    """
+    Return the fraction of fields that look like declaration.
+
+    A declaration looks like '<name> ":" <type> ("|" <type>)*' (with
+    optional whitespace).
+    """
+    txts = [txt.strip().strip('"\'') for txt in header]
+    n_decls = sum(int(_col_decl_pattern.fullmatch(txt) is not None)
+                  for txt in txts)
+    return n_decls / len(txts)
+
+
+def _is_structured(text):
+    text = text.strip()
+    for (beg, end) in ['[]', '()', '{}', '<>']:
+        if text[0] == beg and text[-1] == end:
+            return True
+    return False
+
+_nonstr_value_matcher = parse.mk_match(
+    parse.is_int,
+    parse.is_float,
+    parse.is_bool,
+    parse.is_none,
+    parse.is_date,
+    parse.is_datetime,
+    parse.is_time,
+    parse.is_timedelta,
+    _is_structured,
+)
+
+def header_heuristic__non_string_values(header: list[str]) -> float:
+    """
+    Return the fraction of fields that would not parse as non-string
+    values.
+
+    Non-string values are ints, floats, bools, None, dates, times,
+    datetimes, timedeltas, and compound literals (lists, tuples, sets,
+    dicts).  See '_nonstr_value_matcher'.
+    """
+    txts = [txt.strip().strip('"\'') for txt in header]
+    n_nonstrs = sum(int(_nonstr_value_matcher(txt) is not None) for txt in txts)
+    n_cols = len(header)
+    return (n_cols - n_nonstrs) / n_cols
+
+
+def header_heuristic__names_values(first_rows: list[list[str]]) -> float:
+    """
+    Return the fraction of fields where the first row has a name and
+    the second row has a non-string value.
+
+    This heuristic is very similar to the one used by
+    'csv.Sniffer.has_header' except it compares only the first two rows.
+    See 'header_heuristic__non_string_values' for the non-string values.
+    """
+    if len(first_rows) < 2:
+        raise ValueError('At least 2 rows are needed, not '
+                         f'{len(first_rows)} rows')
+    txts = [[txt.strip().strip('"\'') for txt in first_rows[row_idx]]
+            for row_idx in range(2)]
+    name_idxs = set(i for (i, s) in enumerate(txts[0])
+                    if parse.name_pattern.match(s) is not None)
+    value_idxs = set(i for (i, s) in enumerate(txts[1])
+                     if _nonstr_value_matcher(s) is not None)
+    # The number of columns where row 1 has a name and row 2 has a
+    # non-string value
+    n_nm_val_pairs = len(name_idxs & value_idxs)
+    return n_nm_val_pairs / len(txts[0])
+
+
+  ### Scoring ###
+
+
+def score_header(
+        rows: list[list[str]],
+        declarations_weight: float=5,
+        non_strings_weight: float=3,
+        names_values_weight: float=4,
+) -> float:
+    decls = header_heuristic__declarations(rows[0])
+    nstrs = header_heuristic__non_string_values(rows[0])
+    nmvls = header_heuristic__names_values(rows)
+    total_weight = (
+        declarations_weight + non_strings_weight + names_values_weight)
+    score = (declarations_weight * decls +
+             non_strings_weight * nstrs +
+             names_values_weight * nmvls) / total_weight
+    return score
+
+
+def detect_header(
+        delimited_text: str,
+        csv_format: dict,
+        threshold: float=1/2,
+) -> tuple[bool,list[str],str]:
+    """
+    Detect the header of the given (sample of) delimited text.
+    Return (has header?, first row (header fields), error).
+
+    The header is the first row of the given delimited text if that row
+    contains column descriptions (names, types) rather than data.  The
+    detection is based on whether a convex combination of heuristics
+    meets the given threshold.  (See 'score_header'.)
+    """
+    # Read the first line
+    if len(delimited_text) == 0:
+        return (None, None, 'Empty text')
+    file = io.StringIO(delimited_text)
+    reader = csv.reader(file, **csv_format)
+    rows = list(reader)
+    if len(rows) == 0:
+        return (None, None, 'CSV reader returned no rows')
+    score = score_header(rows)
+    return (score >= threshold, rows[0], None)

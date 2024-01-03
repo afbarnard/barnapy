@@ -7,6 +7,8 @@
 
 
 import csv as pycsv
+import io
+import textwrap
 import unittest
 
 from .. import csv
@@ -159,3 +161,95 @@ class ParseCsvDialectTest(unittest.TestCase):
         for spec_dlct in specs_dialects:
             (spec, dlct) = spec_dlct
             self.assertEqual(dlct, csv.parse_csv_dialect(spec), spec_dlct)
+
+
+class HeaderDetectionTest(unittest.TestCase):
+
+    # Python's 'csv.reader' doesn't recognize a quote in the middle of a
+    # field, even if it follows whitespace
+    decls_hdr = textwrap.dedent('''
+    id:int|dx_date| case?: int |" age: flt | int"|words:str
+    1|2023-12-25|1|35.3|how's it going?
+    2|2023-12-25|0|36.9|not too bad
+    ''').lstrip()
+
+    names_hdr = textwrap.dedent('''
+    id|dx_date | case? | age|words
+    3|2012-03-12|0|43.5|looks_like: a_type
+    4|2012-03-12|1|44.6|no comment
+    ''').lstrip()
+
+    fake_hdr = textwrap.dedent('''
+    version|3.14|2023-12-24|rc8|8 is great!
+    5|2003-02-11|1|53.4|9 is fine.
+    6|2003-02-11|0|51.1|7 is heaven!
+    ''').lstrip()
+
+    @staticmethod
+    def _read_recs(text, csv_fmt='|"e\\mkl\n'):
+        ifile = io.StringIO(text)
+        fmt = csv.parse_dialect(csv_fmt)
+        recs = list(pycsv.reader(ifile, **fmt))
+        return recs
+
+    def test_header_heuristic__declarations(self):
+        for text_frac in [
+                (self.decls_hdr, 5/5),
+                (self.names_hdr, 5/5),
+                (self.fake_hdr, 2/5),
+        ]:
+            with self.subTest(text_frac):
+                (text, frac) = text_frac
+                recs = self._read_recs(text)
+                act = csv.header_heuristic__declarations(recs[0])
+                self.assertEqual(frac, act)
+
+    def test_header_heuristic__non_string_values(self):
+        for text_frac in [
+                (self.decls_hdr, 5/5),
+                (self.names_hdr, 5/5),
+                (self.fake_hdr, 3/5),
+        ]:
+            with self.subTest(text_frac):
+                (text, frac) = text_frac
+                recs = self._read_recs(text)
+                act = csv.header_heuristic__non_string_values(recs[0])
+                self.assertEqual(frac, act)
+
+    def test_header_heuristic__names_values(self):
+        for text_frac in [
+                (self.decls_hdr, 4/5),
+                (self.names_hdr, 4/5),
+                (self.fake_hdr, 2/5),
+        ]:
+            with self.subTest(text_frac):
+                (text, frac) = text_frac
+                recs = self._read_recs(text)
+                act = csv.header_heuristic__names_values(recs)
+                self.assertEqual(frac, act)
+
+    def test_score_header(self):
+        for text_score in [
+                (self.decls_hdr, (5 * 5/5 + 3 * 5/5 + 4 * 4/5) / 12), # 14/15
+                (self.names_hdr, (5 * 5/5 + 3 * 5/5 + 4 * 4/5) / 12), # 14/15
+                (self.fake_hdr,  (5 * 2/5 + 3 * 3/5 + 4 * 2/5) / 12), #  9/20
+        ]:
+            with self.subTest(text_score):
+                (text, score) = text_score
+                recs = self._read_recs(text)
+                act = csv.score_header(recs)
+                self.assertEqual(score, act)
+
+    def test_detect_header(self):
+        csv_fmt = csv.parse_dialect('|"e\\mkl\n')
+        for text_hashdr in [
+                (self.decls_hdr, True),
+                (self.names_hdr, True),
+                (self.fake_hdr, False),
+        ]:
+            with self.subTest(text_hashdr):
+                (text, hashdr) = text_hashdr
+                act = csv.detect_header(text, csv_fmt)
+                self.assertEqual(hashdr, act[0])
+                self.assertEqual(5, len(act[1]))
+                self.assertIsNone(act[2])
