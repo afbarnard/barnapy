@@ -1,8 +1,10 @@
-"""Tests records.py
+"""Tests 'records.py'."""
 
-Copyright (c) 2016 Aubrey Barnard.  This is free software released under
-the MIT license.  See LICENSE for details.
-"""
+# Copyright (c) 2016, 2023 Aubrey Barnard.
+#
+# This is free, open software released under the MIT license.  See
+# `LICENSE` for details.
+
 
 import io
 import unittest
@@ -70,3 +72,75 @@ class ReadRecordsFromCsvTest(unittest.TestCase):
         actual = tuple(records.read_records_from_csv(
             input, record_constructor))
         self.assertEqual(expected, actual)
+
+
+class HeaderTest(unittest.TestCase):
+
+    def test_is_type(self):
+        self.assertTrue(records.Header.is_type(int))
+        self.assertTrue(records.Header.is_type((int, float)))
+        self.assertTrue(records.Header.is_type(object))
+        self.assertTrue(records.Header.is_type(type))
+        self.assertFalse(records.Header.is_type(None))
+        self.assertFalse(records.Header.is_type([int, float]))
+        self.assertFalse(records.Header.is_type((int, None)))
+        self.assertTrue(records.Header.is_type((int, type(None))))
+
+    def test_has_instance(self):
+        hdr = records.Header(
+            ('int', int),
+            ('flt', float),
+            ('str', str),
+            ('non', type(None)),
+            ('tup', tuple),
+            ('lst', list),
+            ('num', (int, float)),
+        )
+        for (rec, exp) in [
+                ((1, 2.0, '3', None, (), [], 7), True),
+                ((1, 2.0, '3', None, (), [], 7.0), True),
+                ((1, 2.0, '3', None, (), [], '7'), False),
+                ((1.0, 2.0, '3', None, (), [], 7), False),
+        ]:
+            with self.subTest((rec, exp)):
+                act = hdr.has_instance(rec)
+                self.assertEqual(exp, act)
+
+
+class RecordTest(unittest.TestCase):
+
+    names = ('one', 'two', 'tre', 'for', 'fiv', 'six', 'sev', 'ate')
+    values = (1, 'two', 3.0, 'four', None, 'sticks', 11, ())
+    types = (int, str, float, str, type(None), str, int, tuple)
+
+    def setUp(self):
+        hdr = records.Header(names=self.names, types=self.types)
+        self.rec = records.Record(hdr, list(self.values))
+
+    def test_get_by_index(self):
+        for idx in range(len(self.values)):
+            self.assertEqual(self.values[idx], self.rec[idx], idx)
+
+    def test_get_by_name(self):
+        for (idx, name) in enumerate(self.names):
+            self.assertEqual(self.values[idx], self.rec[name], name)
+
+    def test_get_by_attribute(self):
+        for (idx, name) in enumerate(self.names):
+            self.assertEqual(self.values[idx], getattr(self.rec, name), name)
+
+    def test_set_by_index(self):
+        idxs = list(range(len(self.values)))
+        for idx in idxs:
+            self.rec[idx] = idx
+        self.assertEqual(idxs, self.rec.values)
+
+    def test_set_by_name(self):
+        for (idx, name) in enumerate(self.names):
+            self.rec[name] = idx
+        self.assertEqual(list(range(len(self.values))), self.rec.values)
+
+    def test_set_by_attribute(self):
+        for (idx, name) in enumerate(self.names):
+            setattr(self.rec, name, idx)
+        self.assertEqual(list(range(len(self.values))), self.rec.values)
