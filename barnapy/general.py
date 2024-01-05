@@ -1,7 +1,9 @@
 """General-purpose functionality and utilities"""
 
-# Copyright (c) 2017 Aubrey Barnard.  This is free software released
-# under the MIT license.  See LICENSE for details.
+# Copyright (c) 2016-2018, 2023 Aubrey Barnard.
+#
+# This is free, open software released under the MIT license.  See
+# `LICENSE` for details.
 
 
 def make_error_if_none(
@@ -64,3 +66,11 @@ def track_iterator( # TODO implement adaptive, time-based frequency
             tracker(count)
     if track_end and count % track_every != 0:
         tracker(count)
+
+
+def is_pair(obj: object):
+    try:
+        (one, two) = obj
+        return True
+    except (TypeError, ValueError):
+        return False

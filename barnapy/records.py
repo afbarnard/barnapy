@@ -11,6 +11,7 @@ from typing import TypeAlias, Union
 import csv
 import itertools as itools
 
+from . import general
 from . import logging
 
 
@@ -67,14 +68,6 @@ def read_records_from_csv(
         logger.info(
             'Processed {}/{} records.  Discarded {}/{} records.',
             num_records - num_bad, num_records, num_bad, num_records)
-
-
-def is_pair(obj): # TODO where should this live?
-    try:
-        (one, two) = obj
-        return True
-    except (TypeError, ValueError):
-        return False
 
 
 FieldType = type | tuple[type]
@@ -159,7 +152,7 @@ class Header:
 
     @staticmethod
     def is_field(obj: object) -> bool:
-        if not is_pair(obj):
+        if not general.is_pair(obj):
             return False
         (name, type) = obj
         return isinstance(name, str) and Header.is_type(type)
