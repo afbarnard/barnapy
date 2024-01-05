@@ -300,6 +300,16 @@ class Header:
 
 
 class Record:
+    """
+    An ordered collection of values that supports access by index,
+    name, or attribute; a named tuple (especially in the sense of a
+    tuple type), a row in a table.
+
+    Compared to 'namedtuple', this exists to support access by name with
+    '__getitem__', and to be more flexible (and therefore general) in
+    what fields / columns make up the contents of a set of records.
+    Defining the header is analogous to defining a 'namedtuple'.
+    """
 
     __slots__ = ('_hdr', '_vals')
 
