@@ -9,11 +9,16 @@ formats.
 # details.
 
 
+from typing import TypeAlias
 import csv
+import dataclasses
+import datetime
+import decimal
 import io
 import re
 
 from . import parse
+from . import records
 
 
 def parse_format(chars) -> dict:
@@ -292,3 +297,185 @@ def detect_header(
         return (None, None, 'CSV reader returned no rows')
     score = score_header(rows)
     return (score >= threshold, rows[0], None)
+
+
+##### Specifying Headers #####
+
+
+# Based on the data types supported by Python, Julia, Rust, SQLite,
+# Postgres, BigQuery
+data_type_name2type = { # TODO probably should be in its own data types module, e.g., for parsing data type parameters like width / precision; TODO? separate by language, e.g., records of the form (name, langs, equivalent Python type, constructor); TODO got to be able to parse union types
+    # Integers
+    'int': int,
+    'int8': int,
+    'int16': int,
+    'int32': int,
+    'int64': int,
+    'int128': int,
+    'uint': int,
+    'uint8': int,
+    'uint16': int,
+    'uint32': int,
+    'uint64': int,
+    'uint128': int,
+
+    # Boolean
+    'bool': bool,
+    'boolean': bool,
+
+    # Floating point numbers
+    'float': float,
+    'float16': float,
+    'float32': float,
+    'float64': float,
+    'real': float,
+
+    # Arbitrary precision
+    'numeric': decimal.Decimal,
+    'decimal': decimal.Decimal,
+    'bigdecimal': decimal.Decimal,
+
+    # Dates & Times
+    'date': datetime.date,
+    'time': datetime.time,
+    'datetime': datetime.datetime,
+
+    # Strings
+    'char': str,
+    'varchar': str,
+    'str': str,
+    'string': str,
+    'text': str,
+
+    # Binary
+    'bytes': bytes,
+    'blob': bytes,
+
+    # Other / Looks like
+    'any': object,
+    'object': object,
+    'none': type(None),
+}
+
+
+# Forward declaration
+FieldSpecification: TypeAlias = 'FieldSpecification'
+
+_range_pattern = re.compile('({0})?-({0})?'.format(
+    parse.integer_pattern.pattern))
+
+@dataclasses.dataclass(slots=True, order=True)
+class FieldSpecification:
+    """
+    A description of a field, or contiguous range of fields, in
+    terms of its number (or range of numbers), name, and type.  All
+    pieces of information are optional and can be omitted.  When a range
+    of numbers is specified, the name is interpreted as a base name to
+    which a sequence number is appended.  The type is the same for all
+    fields in a range.
+    """
+
+    number: int | range = None
+    name: str = None
+    type: records.FieldType = None
+
+    @staticmethod
+    def parse(
+            field_spec: str,
+            name2type: dict[str,type]=data_type_name2type,
+            sep: str=':',
+            name_signifier: str=None,
+    ) -> tuple[FieldSpecification,str]:
+        """
+        Parse the given string as a field specification and return
+        (field specification, error).  Parsing was sucessful if 'error'
+        is `None`.
+
+        A field specification string is a sequence of pieces delimited
+        by colons (or 'sep') where the pieces describe the number (or
+        range), name, and type of the field.  All pieces are optional
+        and they may be given in any order.  All pieces not specified
+        are returned as `None`.  Here is a grammar:
+
+        ```
+        <field-spec> ::= <piece>? (<sep> <piece>?)*
+        <piece> ::= <number> | <name> | <type>
+        <number> ::= <integer> | <range>
+        <range> ::= <integer> "-" <integer>
+        <name> ::= <identifier> | <name-signifier> <char>*
+        <type> ::= <identifier> ("|" <identifier>)*
+        ```
+
+        name2type: dict[name,type]
+
+            Map of all recognized type names to their corresponding
+            types.  A piece will only parse as a type if it is a name in
+            this map or if it looks like a type union.
+
+        name_signifier: str | None
+
+            While names of fields and names of types are typically
+            disjoint, you can use this to specify a prefix that
+            signifies the piece is a name rather than a type.  The
+            prefix is removed from the returned name.
+        """
+        fs = FieldSpecification()
+        if len(field_spec) == 0:
+            return (fs, None)
+        pieces = field_spec.split(sep)
+        if len(pieces) > 3:
+            return (fs, 'Expected at most 3 field specification pieces, '
+                    f'(number, name, type), not {len(pieces)} pieces: {pieces}')
+        for (idx, piece) in enumerate(pieces):
+            piece = piece.strip()
+            if len(piece) == 0:
+                continue
+            elif parse.is_int(piece):
+                if fs.number is not None:
+                    return (fs, 'Field specification piece is an integer, '
+                            'but the field number was already assigned: '
+                            f'Piece {idx + 1} of {field_spec!r}: {piece!r}')
+                number = int(piece)
+                if number < 1:
+                    return (fs, f'Field number negative or zero: {number!r}')
+                fs.number = int(piece)
+            elif (match := _range_pattern.fullmatch(piece)) is not None:
+                if fs.number is not None:
+                    return (fs, 'Field specification piece is a range, '
+                            'but the field number was already assigned: '
+                            f'Piece {idx + 1} of {field_spec!r}: {piece!r}')
+                lo = int(match.group(1))
+                hi = int(match.group(2))
+                if not (1 <= lo <= hi):
+                    return (fs, 'Field specification piece is a range, '
+                            'but the range is bad (negative, zero, or empty):'
+                            f'Piece {idx + 1} of {field_spec!r}: {piece!r}')
+                fs.number = range(lo, hi + 1)
+            elif piece in name2type or piece.lower() in name2type or (
+                    '|' in piece):
+                if fs.type is not None:
+                    return (fs, 'Field specification piece is a type, '
+                            'but the field type was already assigned: '
+                            f'Piece {idx + 1} of {field_spec!r}: {piece!r}')
+                type_names = [t.strip() for t in piece.split('|')]
+                types = [name2type.get(t, name2type.get(t.lower()))
+                         for t in type_names]
+                if None in types:
+                    idx_none = types.index(None)
+                    return (fs, 'Unrecognized type name: '
+                            f'{type_names[idx_none]!r} in '
+                            f'piece {idx + 1} of {field_spec!r}: {piece!r}')
+                fs.type = types[0] if len(types) == 1 else tuple(types)
+            elif parse.is_name(piece) or (name_signifier is not None and
+                                          piece.startswith(name_signifier)):
+                if fs.name is not None:
+                    return (fs, 'Field specification piece is a name, '
+                            'but the field name was already assigned: '
+                            f'Piece {idx + 1} of {field_spec!r}: {piece!r}')
+                fs.name = (piece
+                           if name_signifier is None
+                           else piece[len(name_signifier):])
+            else:
+                return (fs, 'Unrecognized field specification piece: '
+                        f'not a number, name, or type: {piece!r}')
+        return (fs, None)

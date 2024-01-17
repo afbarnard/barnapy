@@ -253,3 +253,90 @@ class HeaderDetectionTest(unittest.TestCase):
                 self.assertEqual(hashdr, act[0])
                 self.assertEqual(5, len(act[1]))
                 self.assertIsNone(act[2])
+
+
+class FieldSpecificationTest(unittest.TestCase):
+
+    def test_parse(self):
+        FS = csv.FieldSpecification
+        ios = [
+            # input, output, error
+
+            # Basic pieces, standard order
+            ('1', FS(1, None, None), None),
+            ('lo', FS(None, 'lo', None), None),
+            ('int', FS(None, None, int), None),
+            ('999:X999', FS(999, 'X999', None), None),
+            (' 7777777 : int ', FS(7777777, None, int), None),
+            ('hi: float ', FS(None, 'hi', float), None),
+            ('88: _123: bool', FS(88, '_123', bool), None),
+
+            # Just separators
+            ('', FS(None, None, None), None),
+            (':', FS(None, None, None), None),
+            ('::', FS(None, None, None), None),
+            (':::', None, 'too many pieces'),
+
+            # Permutations
+            ('1:one:int', FS(1, 'one', int), None),
+            ('one:int:1', FS(1, 'one', int), None),
+            ('int:1:one', FS(1, 'one', int), None),
+            ('1:int:one', FS(1, 'one', int), None),
+            ('int:one:1', FS(1, 'one', int), None),
+            ('one:1:int', FS(1, 'one', int), None),
+
+            # Missing pieces
+            ('2:two:', FS(2, 'two', None), None),
+            ('2::bool', FS(2, None, bool), None),
+            (':two:2', FS(2, 'two', None), None),
+            ('two::bool', FS(None, 'two', bool), None),
+            ('bool:2:', FS(2, None, bool), None),
+            (':bool:two', FS(None, 'two', bool), None),
+
+            # Ranges
+            ('11-111 : X : str', FS(range(11, 112), 'X', str), None),
+
+            # Union types
+            ('num:int|float', FS(None, 'num', (int, float)), None),
+            (' lo : bool | None ', FS(None, 'lo', (bool, type(None))), None),
+
+            # Errors
+            ('1, x, float', None, 'separator not specified'),
+            ('0', None, 'not an ordinal'),
+            ('-1', None, 'not positive'),
+            ('3med', None, 'not a number'),
+            ('3.21', None, 'not an integer'),
+            (' 1 - 2 ', None, 'not a range'),
+            ('object.member', None, 'not a (simple) name'),
+            ('1:2:3', None, 'two numbers'),
+            ('1:2-3', None, 'a number and a range'),
+            ('lo:hi', None, 'two names'),
+            ('field: int : float', None, 'two types'),
+        ]
+        for io in ios:
+            with self.subTest(io):
+                (text, exp_fs, exp_err) = io
+                (act_fs, act_err) = csv.FieldSpecification.parse(text)
+                if exp_err is None:
+                    self.assertIsNone(act_err)
+                    self.assertEqual(exp_fs, act_fs)
+                else:
+                    self.assertIsNotNone(act_err)
+
+    def test_parse__sep(self):
+        exp = csv.FieldSpecification(66, 'route', bool)
+        (act, err) = csv.FieldSpecification.parse('bool, route, 66', sep=',')
+        self.assertIsNone(err)
+        self.assertEqual(exp, act)
+
+    def test_parse__name_signifier(self):
+        exp = csv.FieldSpecification(None, 'int', int)
+        (act, err) = csv.FieldSpecification.parse(
+            '!int:int', name_signifier='!')
+        self.assertIsNone(err)
+        self.assertEqual(exp, act)
+        exp = csv.FieldSpecification(33, '33', None)
+        (act, err) = csv.FieldSpecification.parse(
+            '!!33:33', name_signifier='!!')
+        self.assertIsNone(err)
+        self.assertEqual(exp, act)
