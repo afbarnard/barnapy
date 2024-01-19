@@ -106,6 +106,17 @@ class HeaderTest(unittest.TestCase):
                 act = hdr.has_instance(rec)
                 self.assertEqual(exp, act)
 
+    def test___repr__(self):
+        hdr = records.Header(
+            ('one', int),
+            ('two', float),
+            ('tre', str),
+            ('for', bool),
+        )
+        repr_str = ("Header(('one', int), ('two', float), ('tre', str), "
+                    "('for', bool))")
+        self.assertEqual(repr_str, repr(hdr))
+
 
 class RecordTest(unittest.TestCase):
 

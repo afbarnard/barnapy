@@ -238,7 +238,10 @@ class Header:
         return hash((self._names, self._types))
 
     def __repr__(self) -> str:
-        return '{}{!r}'.format(type(self).__qualname__, self.fields())
+        return '{}({})'.format(
+            type(self).__qualname__,
+            ', '.join(f'({n!r}, {t.__name__})' for (n, t) in self.fields()),
+        )
 
     def __str__(self) -> str:
         return '{}({})'.format(
