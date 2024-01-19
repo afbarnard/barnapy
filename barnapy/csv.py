@@ -21,6 +21,9 @@ from . import parse
 from . import records
 
 
+##### CSV Formats #####
+
+
 def parse_format(chars) -> dict:
     """
     Interpret the given string as a CSV format specification (syntax
@@ -129,6 +132,19 @@ def parse_format(chars) -> dict:
     return format
 
 parse_csv_dialect = parse_format # TODO deprecate
+
+
+"""Default C-style CSV on Unix"""
+_default_format = dict(
+    delimiter=',',
+    doublequote=False,
+    escapechar='\\',
+    lineterminator='\n',
+    quotechar='"',
+    quoting=csv.QUOTE_MINIMAL,
+)
+
+# TODO put hierarchy here
 
 
 ##### Format and Header Detection #####
