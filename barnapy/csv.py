@@ -294,7 +294,7 @@ def detect_header(
         delimited_text: str,
         csv_format: dict,
         threshold: float=1/2,
-) -> tuple[bool,list[str],str]:
+) -> tuple[bool, list[str], str]:
     """
     Detect the header of the given (sample of) delimited text.
     Return (has header?, first row (header fields), error).
@@ -399,10 +399,10 @@ class FieldSpecification:
     @staticmethod
     def parse(
             field_spec: str,
-            name2type: dict[str,type]=data_type_name2type,
+            name2type: dict[str, type]=data_type_name2type,
             sep: str=':',
             name_signifier: str=None,
-    ) -> tuple[FieldSpecification,str]:
+    ) -> tuple[FieldSpecification, str]:
         """
         Parse the given string as a field specification and return
         (field specification, error).  Parsing was sucessful if 'error'
