@@ -9,6 +9,7 @@ formats.
 # details.
 
 
+from collections.abc import Iterable
 from typing import TypeAlias
 import csv
 import dataclasses
@@ -495,3 +496,181 @@ class FieldSpecification:
                 return (fs, 'Unrecognized field specification piece: '
                         f'not a number, name, or type: {piece!r}')
         return (fs, None)
+
+
+# Forward declaration
+HeaderSpecification: TypeAlias = 'HeaderSpecification'
+
+class HeaderSpecification:
+    """
+    Representation of a user-specified tabular header.
+    """
+
+    @staticmethod
+    def parse_from_text(
+            text: str,
+            csv_format: dict | str=_default_format,
+            name2type: dict[str, type]=data_type_name2type,
+            sep: str=':',
+            name_signifier: str=None,
+    ) -> tuple[HeaderSpecification, str]:
+        if isinstance(csv_format, str):
+            csv_format = parse_format(csv_format)
+        ifile = io.StringIO(text)
+        reader = csv.reader(ifile, **csv_format)
+        rows = iter(reader)
+        first_row = next(rows, None)
+        if first_row is None:
+            excerpt = text[:79] + '…' if len(text) > 80 else text
+            return (None, 'Could not parse a HeaderSpecification from: '
+                    f'{excerpt!r}')
+        return HeaderSpecification.parse_from_fields(
+            first_row, name2type, sep, name_signifier)
+
+    @staticmethod
+    def parse_from_fields(
+            field_specs: Iterable[str],
+            name2type: dict[str, type]=data_type_name2type,
+            sep: str=':',
+            name_signifier: str=None,
+    ) -> tuple[HeaderSpecification, str]:
+        (fss, errs) = zip(*(
+            FieldSpecification.parse(spec, name2type, sep, name_signifier)
+            for spec in field_specs))
+        for (idx, err) in enumerate(errs):
+            if err is not None:
+                return (
+                    None, f'Error parsing field specification {idx + 1}: {err}')
+        hs = HeaderSpecification(*fss)
+        return (hs, None)
+
+    @staticmethod
+    def parse(
+            specification: str | Iterable[str],
+            csv_format: dict | str=_default_format,
+            name2type: dict[str, type]=data_type_name2type,
+            sep: str=':',
+            name_signifier: str=None,
+    ) -> HeaderSpecification:
+        (hs, err) = (
+            HeaderSpecification.parse_from_text(
+                specification, csv_format, name2type, sep, name_signifier)
+            if isinstance(specification, str)
+            else HeaderSpecification.parse_from_fields(
+                    specification, name2type, sep, name_signifier))
+        if err is not None:
+            raise ValueError(err)
+        return hs
+
+    def __init__(self, *field_specs: Iterable[FieldSpecification]):
+        self._field_specs = list(field_specs)
+        self._number_range = None
+
+    def __len__(self) -> int:
+        return len(self._field_specs)
+
+    def __iter__(self) -> Iterable[FieldSpecification]:
+        return iter(self._field_specs)
+
+    n_fields = __len__
+
+    def number_range(self):
+        """Return the range of the field numbers."""
+        if self._number_range is None:
+            if len(self) == 0:
+                self._number_range = range(1, 1)
+            else:
+                min_num = min(r.start for (r, _) in self.numbered_fields())
+                max_num = max(r.stop for (r, _) in self.numbered_fields())
+                self._number_range = range(min_num, max_num)
+        return self._number_range
+
+    def numbered_fields(self) -> Iterable[tuple[range, FieldSpecification]]:
+        num = 1
+        for fs in self:
+            if fs.number is None:
+                yield (range(num, num + 1), fs)
+                num += 1
+            elif isinstance(fs.number, int):
+                yield (range(fs.number, fs.number + 1), fs)
+                num = fs.number + 1
+            elif isinstance(fs.number, range):
+                yield (fs.number, fs)
+                num = fs.number.stop
+            else:
+                raise ValueError(f'Not a number or range: {fs.number!r}')
+
+    def is_uniquely_numbered(self) -> bool:
+        seen = set()
+        for (range, _) in self.numbered_fields():
+            if not seen.isdisjoint(range):
+                return False
+            seen.update(range)
+        return True
+
+    def is_contiguous(self) -> bool:
+        seen = set()
+        for (range, _) in self.numbered_fields():
+            seen.update(range)
+        range = self.number_range()
+        return len(seen) == (range.stop - range.start)
+
+    def is_in_order(self) -> bool:
+        prev = None
+        for (range, _) in self.numbered_fields():
+            if prev is not None and range.start < prev.stop:
+                return False
+            prev = range
+        return True
+
+    def number_fields(self) -> HeaderSpecification:
+        for (range, fs) in self.numbered_fields():
+            if fs.number is None:
+                fs.number = range if len(range) > 1 else range.start
+        return self
+
+    def instantiate_ranges(self) -> HeaderSpecification:
+        new_specs = []
+        for fs in self:
+            if isinstance(fs.number, range):
+                new_specs.extend(FieldSpecification(number, fs.name, fs.type)
+                                 for number in fs.number)
+            else:
+                new_specs.append(fs)
+        self._field_specs = new_specs
+        self._number_range = None
+        return self
+
+    def generate_names(self, name_prefix='_') -> HeaderSpecification:
+        for (range, fs) in self.numbered_fields():
+            if fs.name is None:
+                fs.name = f'{name_prefix}{range.start}'
+                if len(range) > 1:
+                    fs.name += f'-{range.stop - 1}'
+        return self
+
+    def sort_fields(self) -> HeaderSpecification:
+        raise NotImplementedError()
+        return self
+
+    def fill_in_fields(self) -> HeaderSpecification:
+        raise NotImplementedError()
+        return self
+
+    def field_indices(self) -> list[int]:
+        """
+        Return a list of indices of the fields this header
+        specification references (in the order they are referenced).
+
+        These are the indices of the fields this specification selects.
+        """
+        idxs = []
+        for (range_, _) in self.numbered_fields():
+            idxs.extend(range(range_.start - 1, range_.stop - 1))
+        return idxs
+
+    def header(self) -> records.Header:
+        # Copy so as to not modify self
+        hs = HeaderSpecification(*self).instantiate_ranges().generate_names()
+        names_types = ((fs.name, fs.type) for fs in hs)
+        return records.Header(*names_types)

@@ -12,6 +12,7 @@ import textwrap
 import unittest
 
 from .. import csv
+from .. import records
 
 
 class ParseFormatTest(unittest.TestCase):
@@ -340,3 +341,120 @@ class FieldSpecificationTest(unittest.TestCase):
             '!!33:33', name_signifier='!!')
         self.assertIsNone(err)
         self.assertEqual(exp, act)
+
+
+class HeaderSpecificationTest(unittest.TestCase):
+
+    def setUp(self):
+        FS = csv.FieldSpecification
+        self.hs = csv.HeaderSpecification(
+            FS(7, 'lo', int),
+            FS(None, 'hi', (int, type(None))),
+            FS(3, 'one', str),
+            FS(None, 'two', float),
+            FS(None, 'tre', None),
+            FS(None, 'for', bool),
+        )
+
+    def test_parse_from_text(self):
+        (hs, err) = csv.HeaderSpecification.parse_from_text('')
+        self.assertRegex(err, 'Could not parse a HeaderSpecification from')
+        (hs, err) = csv.HeaderSpecification.parse_from_text(
+            '7:lo:int, hi:int|None, 3:one:str, two:float, tre, for:bool')
+        self.assertIsNone(err)
+        self.assertEqual(list(self.hs), list(hs))
+
+    def test_parse_from_fields(self):
+        fields = [
+            '7:lo:int', 'hi:int|None', '3:one:str',
+            'two:float', 'tre', 'for:bools',
+        ]
+        (hs, err) = csv.HeaderSpecification.parse_from_fields(fields)
+        self.assertRegex(err, 'Error parsing field specification 6')
+        fields[5] = fields[5][:-1]
+        (hs, err) = csv.HeaderSpecification.parse_from_fields(fields)
+        self.assertIsNone(err)
+        self.assertEqual(list(self.hs), list(hs))
+
+    def test___len__(self):
+        self.assertEqual(6, len(self.hs))
+
+    def test___iter__(self):
+        self.assertEqual(self.hs._field_specs, list(self.hs))
+
+    def test_number_range(self):
+        self.assertEqual(range(3, 9), self.hs.number_range())
+
+    def test_numbered_fields(self):
+        FS = csv.FieldSpecification
+        numbered_fields = [
+            (range(7, 8), FS(7, 'lo', int)),
+            (range(8, 9), FS(None, 'hi', (int, type(None)))),
+            (range(3, 4), FS(3, 'one', str)),
+            (range(4, 5), FS(None, 'two', float)),
+            (range(5, 6), FS(None, 'tre', None)),
+            (range(6, 7), FS(None, 'for', bool)),
+        ]
+        self.assertEqual(numbered_fields, list(self.hs.numbered_fields()))
+
+    def test_is_uniquely_numbered(self):
+        self.assertTrue(self.hs.is_uniquely_numbered())
+        specs = list(self.hs)
+        specs.append(specs[0])
+        hs = csv.HeaderSpecification(*specs)
+        self.assertFalse(hs.is_uniquely_numbered())
+
+    def test_is_contiguous(self):
+        self.assertTrue(self.hs.is_contiguous())
+        specs = list(self.hs)
+        specs.append(csv.FieldSpecification(1, None, None))
+        hs = csv.HeaderSpecification(*specs)
+        self.assertFalse(hs.is_contiguous())
+
+    def test_is_in_order(self):
+        self.assertFalse(self.hs.is_in_order())
+        specs = list(self.hs)
+        specs = specs[2:] + specs[:2]
+        hs = csv.HeaderSpecification(*specs)
+        self.assertTrue(hs.is_in_order())
+
+    def test_number_fields(self):
+        self.assertEqual([7, 8, 3, 4, 5, 6],
+                         [fs.number for fs in self.hs.number_fields()])
+
+    def test_instantiate_ranges(self):
+        hs = csv.HeaderSpecification.parse('15-19:teens, 5-8:ones:int')
+        FS = csv.FieldSpecification
+        fs = ([FS(i, 'teens', None) for i in range(15, 20)]
+              + [FS(i, 'ones', int) for i in range(5, 9)])
+        self.assertEqual(fs, list(hs.instantiate_ranges()))
+
+    def test_generate_names(self):
+        hs = csv.HeaderSpecification.parse('15-19,5-8:int,1,,')
+        FS = csv.FieldSpecification
+        fs = [
+            FS(range(15, 20), 'fldx_15-19', None),
+            FS(range(5, 9), 'fldx_5-8', int),
+            FS(1, 'fldx_1', None),
+            FS(None, 'fldx_2', None),
+            FS(None, 'fldx_3', None),
+        ]
+        self.assertEqual(fs, list(hs.generate_names('fldx_')))
+
+    def test_field_indices(self):
+        self.assertEqual([6, 7, 2, 3, 4, 5], self.hs.field_indices())
+        hs = csv.HeaderSpecification.parse('15-19, 5-8, 4-5')
+        self.assertEqual([14, 15, 16, 17, 18, 4, 5, 6, 7, 3, 4],
+                         hs.field_indices())
+
+    def test_header(self):
+        hs = csv.HeaderSpecification.parse('3:int, str, float, 10-12:bool')
+        hdr = records.Header(
+            ('_3', int),
+            ('_4', str),
+            ('_5', float),
+            ('_10', bool),
+            ('_11', bool),
+            ('_12', bool),
+        )
+        self.assertEqual(hdr, hs.header())
