@@ -352,7 +352,7 @@ data_type_name2type = { # TODO probably should be in its own data types module, 
     'decimal': decimal.Decimal,
     'bigdecimal': decimal.Decimal,
 
-    # Dates & Times
+    # Dates & times
     'date': datetime.date,
     'time': datetime.time,
     'datetime': datetime.datetime,
@@ -368,10 +368,13 @@ data_type_name2type = { # TODO probably should be in its own data types module, 
     'bytes': bytes,
     'blob': bytes,
 
-    # Other / Looks like
+    # None / null
+    'none': type(None),
+    'null': type(None),
+
+    # Any / object / looks like
     'any': object,
     'object': object,
-    'none': type(None),
 }
 
 
