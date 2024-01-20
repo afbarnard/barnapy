@@ -422,12 +422,12 @@ class HeaderSpecificationTest(unittest.TestCase):
         self.assertEqual([7, 8, 3, 4, 5, 6],
                          [fs.number for fs in self.hs.number_fields()])
 
-    def test_instantiate_ranges(self):
+    def test_expand_ranges(self):
         hs = csv.HeaderSpecification.parse('15-19:teens, 5-8:ones:int')
         FS = csv.FieldSpecification
         fs = ([FS(i, 'teens', None) for i in range(15, 20)]
               + [FS(i, 'ones', int) for i in range(5, 9)])
-        self.assertEqual(fs, list(hs.instantiate_ranges()))
+        self.assertEqual(fs, list(hs.expand_ranges()))
 
     def test_generate_names(self):
         hs = csv.HeaderSpecification.parse('15-19,5-8:int,1,,')

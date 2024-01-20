@@ -503,7 +503,40 @@ HeaderSpecification = ForwardRef('HeaderSpecification')
 
 class HeaderSpecification:
     """
-    Representation of a user-specified tabular header.
+    Representation of a user-specified tabular header as a
+    collection of field specifications.
+
+    Exists primarily to parse and validate user-specified headers so as
+    to produce a working 'records.Header'.
+
+    The main purpose of a header specification is to give names and
+    types to fields, but it can also reference only a subset of fields
+    and reorder them as for SQL 'select'.  This is accomplished by
+    referencing fields by number.  Each field is implicitly numbered
+    according to the order of its occurrence in the data.  Using this
+    number allows one to refer to and select fields independently of one
+    another.  For example, consider the following header.
+
+        one:int, two:str, tre:float, fur:bool, fiv:any
+
+    Because numbers are automatically assigned in sequence, this is the
+    same as if one had written,
+
+        1:one:int, 2:two:str, 3:tre:float, 4:fur:bool, 5:fiv:any
+
+    and so one could select and reorder fields as desired,
+
+        5:fiv:any, 1:one:int, 2:two:str, 4:fur:bool, 3:tre:float
+
+    Numbers also allow one to give names and types in bulk, e.g., for
+    data containing 1000 genes, weights, and responses,
+
+        4-1003:gene:float, 1:id:int, y:float, wgt:float
+
+    When not specified, numbers follow in sequence from the
+    previously-specified number.  So 'y' and 'wgt' above are fields 2
+    and 3 respectively.  Lastly, "|" can be used to form union types,
+    e.g., `optional_number:int|float|null`.
     """
 
     @staticmethod
@@ -514,6 +547,21 @@ class HeaderSpecification:
             sep: str=':',
             name_signifier: str=None,
     ) -> tuple[HeaderSpecification | None, str | None]:
+        """
+        Create a 'HeaderSpecification' by parsing the given text.
+        Return (header specification, error).
+
+        First splits the text into fields using the given CSV format and
+        then parses each field as a field specification.  The arguments
+        'name2type', 'sep', and 'name_signifier' are passed to
+        'FieldSpecification.parse'.
+
+        Examples:
+        * 'int, str, float, bool'
+        * '"1-10:X:int|float"|Y:float'
+        * 'id:int|lo:date|hi:date|lbl:int|wgt:float'
+        * '4:lbl:int,wgt:float,10-20:X:float,6-9:X:int'
+        """
         if isinstance(csv_format, str):
             csv_format = parse_format(csv_format)
         ifile = io.StringIO(text)
@@ -534,6 +582,14 @@ class HeaderSpecification:
             sep: str=':',
             name_signifier: str=None,
     ) -> tuple[HeaderSpecification | None, str | None]:
+        """
+        Create a 'HeaderSpecification' by parsing each of the given
+        strings as a field specification.  Return (header specification,
+        error).
+
+        The arguments 'name2type', 'sep', and 'name_signifier' are
+        passed to 'FieldSpecification.parse'.
+        """
         (fss, errs) = zip(*(
             FieldSpecification.parse(spec, name2type, sep, name_signifier)
             for spec in field_specs))
@@ -552,6 +608,14 @@ class HeaderSpecification:
             sep: str=':',
             name_signifier: str=None,
     ) -> HeaderSpecification:
+        """
+        Create a 'HeaderSpecification' by parsing the given header
+        specification (string) or field specifications (strings).
+
+        Operates by calling either 'parse_from_text' or
+        'parse_from_fields' but throws an exception rather than
+        returning an error.
+        """
         (hs, err) = (
             HeaderSpecification.parse_from_text(
                 specification, csv_format, name2type, sep, name_signifier)
@@ -586,6 +650,13 @@ class HeaderSpecification:
         return self._number_range
 
     def numbered_fields(self) -> Iterable[tuple[range, FieldSpecification]]:
+        """
+        Generate this HS's field specifications along with their numbers.
+
+        That is, infers the numbers for field specifications that don't
+        have numbers.  Returns all the numbers as ranges for type
+        stability.
+        """
         num = 1
         for fs in self:
             if fs.number is None:
@@ -601,6 +672,12 @@ class HeaderSpecification:
                 raise ValueError(f'Not a number or range: {fs.number!r}')
 
     def is_uniquely_numbered(self) -> bool:
+        """
+        Whether the field numbers are unique and ranges do not
+        overlap.
+
+        (A HS might reference a field multiple times.)
+        """
         seen = set()
         for (range, _) in self.numbered_fields():
             if not seen.isdisjoint(range):
@@ -609,6 +686,12 @@ class HeaderSpecification:
         return True
 
     def is_contiguous(self) -> bool:
+        """
+        Whether the field numbers are contiguous, that is, have no
+        gaps.
+
+        (A HS might specify only certain fields and not others.)
+        """
         seen = set()
         for (range, _) in self.numbered_fields():
             seen.update(range)
@@ -616,6 +699,11 @@ class HeaderSpecification:
         return len(seen) == (range.stop - range.start)
 
     def is_in_order(self) -> bool:
+        """
+        Whether the field numbers are in order.
+
+        (A HS might select fields in an arbitrary order.)
+        """
         prev = None
         for (range, _) in self.numbered_fields():
             if prev is not None and range.start < prev.stop:
@@ -624,12 +712,20 @@ class HeaderSpecification:
         return True
 
     def number_fields(self) -> HeaderSpecification:
+        """
+        Update this HS by numbering all fields whose number is
+        `None`.
+        """
         for (range, fs) in self.numbered_fields():
             if fs.number is None:
                 fs.number = range if len(range) > 1 else range.start
         return self
 
-    def instantiate_ranges(self) -> HeaderSpecification:
+    def expand_ranges(self) -> HeaderSpecification:
+        """
+        Update this HS by replacing all ranges with
+        individually-numbered field specifications.
+        """
         new_specs = []
         for fs in self:
             if isinstance(fs.number, range):
@@ -642,6 +738,12 @@ class HeaderSpecification:
         return self
 
     def generate_names(self, name_prefix='_') -> HeaderSpecification:
+        """
+        Update this HS by generating names for all fields whose name
+        is `None`.
+
+        The generated name is the given prefix plus the field number.
+        """
         for (range, fs) in self.numbered_fields():
             if fs.name is None:
                 fs.name = f'{name_prefix}{range.start}'
@@ -670,7 +772,13 @@ class HeaderSpecification:
         return idxs
 
     def header(self) -> records.Header:
+        """
+        Create a header from this specification.
+
+        The header is created from a copy of this HS whose ranges have
+        been expanded and whose names have been generated.
+        """
         # Copy so as to not modify self
-        hs = HeaderSpecification(*self).instantiate_ranges().generate_names()
+        hs = HeaderSpecification(*self).expand_ranges().generate_names()
         names_types = ((fs.name, fs.type) for fs in hs)
         return records.Header(*names_types)
