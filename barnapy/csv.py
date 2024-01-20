@@ -10,7 +10,7 @@ formats.
 
 
 from collections.abc import Iterable
-from typing import TypeAlias
+from typing import ForwardRef
 import csv
 import dataclasses
 import datetime
@@ -376,7 +376,7 @@ data_type_name2type = { # TODO probably should be in its own data types module, 
 
 
 # Forward declaration
-FieldSpecification: TypeAlias = 'FieldSpecification'
+FieldSpecification = ForwardRef('FieldSpecification')
 
 _range_pattern = re.compile('({0})?-({0})?'.format(
     parse.integer_pattern.pattern))
@@ -402,7 +402,7 @@ class FieldSpecification:
             name2type: dict[str, type]=data_type_name2type,
             sep: str=':',
             name_signifier: str=None,
-    ) -> tuple[FieldSpecification, str]:
+    ) -> tuple[FieldSpecification | None, str | None]:
         """
         Parse the given string as a field specification and return
         (field specification, error).  Parsing was sucessful if 'error'
@@ -499,7 +499,7 @@ class FieldSpecification:
 
 
 # Forward declaration
-HeaderSpecification: TypeAlias = 'HeaderSpecification'
+HeaderSpecification = ForwardRef('HeaderSpecification')
 
 class HeaderSpecification:
     """
@@ -513,7 +513,7 @@ class HeaderSpecification:
             name2type: dict[str, type]=data_type_name2type,
             sep: str=':',
             name_signifier: str=None,
-    ) -> tuple[HeaderSpecification, str]:
+    ) -> tuple[HeaderSpecification | None, str | None]:
         if isinstance(csv_format, str):
             csv_format = parse_format(csv_format)
         ifile = io.StringIO(text)
@@ -533,7 +533,7 @@ class HeaderSpecification:
             name2type: dict[str, type]=data_type_name2type,
             sep: str=':',
             name_signifier: str=None,
-    ) -> tuple[HeaderSpecification, str]:
+    ) -> tuple[HeaderSpecification | None, str | None]:
         (fss, errs) = zip(*(
             FieldSpecification.parse(spec, name2type, sep, name_signifier)
             for spec in field_specs))
