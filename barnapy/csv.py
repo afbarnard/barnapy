@@ -755,11 +755,38 @@ class HeaderSpecification:
         return self
 
     def sort_fields(self) -> HeaderSpecification:
-        raise NotImplementedError()
+        """Update this HS by ordering the fields by number."""
+        ordered = sorted(self.numbered_fields(),
+                         key=lambda rng_fs: (rng_fs[0].start, rng_fs[0].stop))
+        self._field_specs = [fs for (_, fs) in ordered]
+        self._number_range = None
         return self
 
-    def fill_in_fields(self) -> HeaderSpecification:
-        raise NotImplementedError()
+    def fill_in_fields(self, n_fields=None) -> HeaderSpecification:
+        """
+        Update this HS by adding fields to fill in where there are
+        gaps in the numbers.
+        """
+        num_stop = self.number_range().stop
+        if n_fields is not None:
+            num_stop = max(num_stop, n_fields + 1)
+        nums = set(range(1, num_stop))
+        for (range_, _) in self.numbered_fields():
+            nums.difference_update(range_)
+        if len(nums) == 0:
+            return self
+        nums = sorted(nums)
+        range_start = nums[0]
+        for idx in range(1, len(nums)):
+            prev_num = nums[idx - 1]
+            curr_num = nums[idx]
+            if (curr_num - prev_num) > 1:
+                self._field_specs.append(FieldSpecification(
+                    range(range_start, prev_num + 1), None, None))
+                range_start = curr_num
+        self._field_specs.append(FieldSpecification(
+            range(range_start, nums[-1] + 1), None, None))
+        self._number_range = None
         return self
 
     def field_indices(self) -> list[int]:

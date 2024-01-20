@@ -441,6 +441,29 @@ class HeaderSpecificationTest(unittest.TestCase):
         ]
         self.assertEqual(fs, list(hs.generate_names('fldx_')))
 
+    def test_sort_fields(self):
+        act = csv.HeaderSpecification.parse('18,11,7,4,3').sort_fields()
+        exp = csv.HeaderSpecification.parse('3,4,7,11,18')
+        self.assertEqual(list(exp), list(act))
+
+    def test_fill_in_fields(self):
+        # Nothing to fill in
+        act = csv.HeaderSpecification.parse('2,5,1,4,3').fill_in_fields()
+        exp = csv.HeaderSpecification.parse('2,5,1,4,3')
+        self.assertEqual(list(exp), list(act))
+        # Argument has no effect
+        act = csv.HeaderSpecification.parse('5').fill_in_fields(5)
+        exp = csv.HeaderSpecification.parse('5,1-4')
+        self.assertEqual(list(exp), list(act))
+        # Fill in singles at start, middle, end
+        act = csv.HeaderSpecification.parse('4,2,6').fill_in_fields(7)
+        exp = csv.HeaderSpecification.parse('4,2,6,1-1,3-3,5-5,7-7')
+        self.assertEqual(list(exp), list(act))
+        # Fill in doubles at start, middle, end
+        act = csv.HeaderSpecification.parse('4,3,9,8,7').fill_in_fields(11)
+        exp = csv.HeaderSpecification.parse('4,3,9,8,7,1-2,5-6,10-11')
+        self.assertEqual(list(exp), list(act))
+
     def test_field_indices(self):
         self.assertEqual([6, 7, 2, 3, 4, 5], self.hs.field_indices())
         hs = csv.HeaderSpecification.parse('15-19, 5-8, 4-5')
