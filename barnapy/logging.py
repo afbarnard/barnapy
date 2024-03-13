@@ -169,7 +169,7 @@ except:
 
 runtime_environment_elements = collections.OrderedDict((
     # Python context
-    ('python', ('Python {}', lambda: sys.version.replace('\n', ' '))),
+    ('python', ('python: Python {}', lambda: sys.version.replace('\n', ' '))),
     ('version', (
         'version: {0[0].major}.{0[0].minor}.{0[0].micro}-'
         '{0[0].releaselevel}.{0[0].serial} running on {0[1]} '
@@ -205,24 +205,23 @@ information about the runtime environment.
 """
 
 
-def log_runtime_environment( # TODO? switch to logging just one message with all keys
-        logger=None,
-        level=_logging.INFO,
-        what=runtime_environment_elements.keys(),
-):
+def get_runtime_environment(
+        what: list[str]=runtime_environment_elements.keys(),
+) -> dict[str, tuple[str, object]]:
     """
-    Log information about the current runtime environment.
+    Collect information about the current runtime environment.
+    Return a mapping from environment keys to (message, info) pairs
+    where `message.format(info)` is expected.
 
-    `what`: What elements of `runtime_environment_elements` to log.
+    `what`: What elements of `runtime_environment_elements` to collect.
     """
-    if logger is None:
-        logger = getLogger()
+    env = {}
     for key in what:
         # Returns `None` if bad key
         val = runtime_environment_elements.get(key)
         if isinstance(val, tuple):
-            message, function = val
-        elif val:
+            (message, function) = val
+        elif val is not None:
             message = key + ': {}'
             function = val
         else:
@@ -234,7 +233,36 @@ def log_runtime_environment( # TODO? switch to logging just one message with all
             info = function()
         except Exception as e:
             info = f'<failed: {e}>'
-        logger.log(level, message, info)
+        env[key] = (message, info)
+    return env
+
+
+def format_runtime_environment(env: dict, indent: str='  ') -> str:
+    buf = io.StringIO()
+    buf.write('{\n')
+    for (msg, info) in env.values():
+        buf.write(indent)
+        buf.write(msg.format(info))
+        buf.write('\n')
+    buf.write('}')
+    return buf.getvalue()
+
+
+def log_runtime_environment(
+        logger=None,
+        level=_logging.INFO,
+        what=runtime_environment_elements.keys(),
+):
+    """
+    Log information about the current runtime environment.
+
+    `what`: What elements of `runtime_environment_elements` to log.
+    """
+    env = get_runtime_environment(what)
+    msg = format_runtime_environment(env)
+    if logger is None:
+        logger = getLogger()
+    logger.log(level, 'Runtime environment:\n{}', msg)
 
 
 """
