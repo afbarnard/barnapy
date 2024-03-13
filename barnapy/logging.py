@@ -3,7 +3,7 @@ Wrapper module for the standard logging module that provides a
 sensible default configuration and {}-style formatting.
 """
 
-# Copyright (c) 2015-2018, 2020, 2023 Aubrey Barnard.
+# Copyright (c) 2015-2018, 2020, 2023-2024 Aubrey Barnard.
 #
 # This is free software released under the MIT license.  See LICENSE for
 # details.
@@ -14,6 +14,7 @@ import getpass
 import io
 import logging as _logging
 import os
+import pathlib
 import platform
 import socket
 import string
@@ -67,10 +68,13 @@ def log_record_factory(*args, **kwargs):
     return CurlyBraceFormatLogRecord(*args, **kwargs)
 
 
-def default_config(file=None, level=_logging.INFO):
+def default_config(
+        file: None | str | pathlib.Path | io.IOBase=None,
+        level: int=_logging.INFO,
+        format: str='{asctime} {levelname} {name}: {message}',
+        datefmt: str='%Y-%m-%dT%H:%M:%S',
+) -> None:
     """Set up the logging system with a default configuration."""
-    format='{asctime} {levelname} {name}: {message}'
-    datefmt='%Y-%m-%dT%H:%M:%S'
     style='{'
     # Handle filenames, streams, and default.  This has to be done with
     # separate calls because basicConfig won't allow multiple
@@ -78,7 +82,7 @@ def default_config(file=None, level=_logging.INFO):
     if file is None:
         _logging.basicConfig(
             format=format, datefmt=datefmt, style=style, level=level)
-    elif isinstance(file, str):
+    elif isinstance(file, (str, pathlib.Path)):
         _logging.basicConfig(
             format=format, datefmt=datefmt, style=style, level=level,
             filename=file)
