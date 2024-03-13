@@ -10,6 +10,7 @@ sensible default configuration and {}-style formatting.
 
 
 import collections
+import getpass
 import io
 import logging as _logging
 import os
@@ -192,7 +193,7 @@ runtime_environment_elements = collections.OrderedDict((
 
     # Process context
     ('pid', os.getpid),
-    ('user', os.getlogin),
+    ('user', getpass.getuser),
     ('uid', ('uid: real: {0[0]}, eff: {0[1]}, saved: {0[2]}',
              osgetresuid)),
     ('gid', ('gid: real: {0[0]}, eff: {0[1]}, saved: {0[2]}',
@@ -204,7 +205,7 @@ information about the runtime environment.
 """
 
 
-def log_runtime_environment(
+def log_runtime_environment( # TODO? switch to logging just one message with all keys
         logger=None,
         level=_logging.INFO,
         what=runtime_environment_elements.keys(),
@@ -227,7 +228,13 @@ def log_runtime_environment(
         else:
             # Invalid key or value.  Just skip to the next one.
             continue
-        logger.log(level, message, function())
+        # Call the function to get the runtime info for this key.  Catch
+        # all exceptions so that logging doesn't fail.
+        try:
+            info = function()
+        except Exception as e:
+            info = f'<failed: {e}>'
+        logger.log(level, message, info)
 
 
 """
