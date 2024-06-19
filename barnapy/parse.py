@@ -766,7 +766,7 @@ def name_err(text):
         return None, ParseError('Cannot parse a name from', text)
 
 
-# The following atomic literals only have functions for detection
+# The following atomic literals may only have functions for detection
 # because there is no obvious value to construct or return.  In
 # particular, it makes no sense to return None as a sentinel value from
 # a function that would also return None on success.  Other sentinel
@@ -777,9 +777,27 @@ def is_none(text):
     """Whether the given text is None."""
     return none_pattern.fullmatch(text.strip()) is not None
 
+def none_err(text: str) -> (None, ParseError):
+    """Parse `None` from the given text or fail with an error."""
+    if is_none(text):
+        return (None, None)
+    else:
+        return (None, ParseError('Cannot parse `None` from', text))
+
 def is_none_word(text):
     """Whether the given text is a synonym word for None (null, nil, na)."""
     return none_word_pattern.fullmatch(text.strip()) is not None
+
+def none_word_err(text: str) -> (None, ParseError):
+    """
+    Parse `None` from the given 'none' synonym text or fail with an
+    error.
+    """
+    if is_none_word(text):
+        return (None, None)
+    else:
+        return (None, ParseError(
+            'Cannot parse a `None` synonym word from', text))
 
 
 def is_empty(text):
