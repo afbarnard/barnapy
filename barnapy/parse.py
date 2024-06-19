@@ -623,11 +623,11 @@ def int_err(text):
 
 def is_float(text, allow_inf_nan=True):
     """Whether the given text can be parsed as a float."""
-    text = text.strip()
-    return (float_pattern.fullmatch(text) is not None or
-            integer_pattern.fullmatch(text) is not None or
+    txt = text.strip()
+    return (float_pattern.fullmatch(txt) is not None or
+            integer_pattern.fullmatch(txt) is not None or
             (allow_inf_nan and
-             inf_nan_pattern.fullmatch(text) is not None))
+             inf_nan_pattern.fullmatch(txt) is not None))
 
 
 def float(text, default=None, allow_inf_nan=True):
@@ -651,17 +651,17 @@ def float_err(text, allow_inf_nan=True):
 
 def is_bool(text):
     """Whether the given text can be parsed as a boolean."""
-    text = text.strip()
-    return (bool_true_pattern.fullmatch(text) is not None
-            or bool_false_pattern.fullmatch(text) is not None)
+    txt = text.strip()
+    return (bool_true_pattern.fullmatch(txt) is not None
+            or bool_false_pattern.fullmatch(txt) is not None)
 
 
 def bool(text, default=None):
     """Return a boolean parsed from the given text, else `default`."""
-    text = text.strip()
-    if bool_true_pattern.fullmatch(text) is not None:
+    txt = text.strip()
+    if bool_true_pattern.fullmatch(txt) is not None:
         return True
-    elif bool_false_pattern.fullmatch(text) is not None:
+    elif bool_false_pattern.fullmatch(txt) is not None:
         return False
     else:
         return default
@@ -673,10 +673,10 @@ def bool_err(text):
 
     Return a (value, error) pair per Go style.
     """
-    text = text.strip()
-    if bool_true_pattern.fullmatch(text) is not None:
+    txt = text.strip()
+    if bool_true_pattern.fullmatch(txt) is not None:
         return True, None
-    elif bool_false_pattern.fullmatch(text) is not None:
+    elif bool_false_pattern.fullmatch(txt) is not None:
         return False, None
     else:
         return None, ParseError('Cannot parse a boolean from', text)
@@ -686,19 +686,19 @@ def is_bool_word(text):
     Whether the given text can be parsed as a boolean synonym word
     (no, yes, off, on).
     """
-    text = text.strip()
-    return (bool_word_true_pattern.fullmatch(text) is not None
-            or bool_word_false_pattern.fullmatch(text) is not None)
+    txt = text.strip()
+    return (bool_word_true_pattern.fullmatch(txt) is not None
+            or bool_word_false_pattern.fullmatch(txt) is not None)
 
 def bool_word(text, default=None):
     """
     Return a boolean synonym word parsed from the given text, else
     `default`.
     """
-    text = text.strip()
-    if bool_word_true_pattern.fullmatch(text) is not None:
+    txt = text.strip()
+    if bool_word_true_pattern.fullmatch(txt) is not None:
         return True
-    elif bool_word_false_pattern.fullmatch(text) is not None:
+    elif bool_word_false_pattern.fullmatch(txt) is not None:
         return False
     else:
         return default
@@ -709,10 +709,10 @@ def bool_word_err(text):
 
     Return a (value, error) pair per Go style.
     """
-    text = text.strip()
-    if bool_word_true_pattern.fullmatch(text) is not None:
+    txt = text.strip()
+    if bool_word_true_pattern.fullmatch(txt) is not None:
         return True, None
-    elif bool_word_false_pattern.fullmatch(text) is not None:
+    elif bool_word_false_pattern.fullmatch(txt) is not None:
         return False, None
     else:
         return None, ParseError(
@@ -729,8 +729,8 @@ def is_name(text):
 
 def name(text, default=None):
     """Return a name parsed from the given text, else `default`."""
-    text = text.strip()
-    return text if is_name(text) else default
+    txt = text.strip()
+    return txt if is_name(txt) else default
 
 
 def name_err(text):
@@ -739,9 +739,9 @@ def name_err(text):
 
     Return a (value, error) pair per Go style.
     """
-    text = text.strip()
-    if is_name(text):
-        return text, None
+    txt = text.strip()
+    if is_name(txt):
+        return txt, None
     else:
         return None, ParseError('Cannot parse a name from', text)
 
@@ -772,11 +772,12 @@ def is_atom(text, allow_inf_nan=True):
     Whether the given text can be parsed as an atomic literal (int,
     float, bool, None, name).
     """
-    return (is_int(text) or
-            is_float(text, allow_inf_nan) or
-            is_bool(text) or
-            is_none(text) or
-            is_name(text))
+    txt = text.strip()
+    return (is_int(txt) or
+            is_float(txt, allow_inf_nan) or
+            is_bool(txt) or
+            is_none(txt) or
+            is_name(txt))
 
 
 def atom_err(text, default=None, allow_inf_nan=True):
@@ -792,26 +793,27 @@ def atom_err(text, default=None, allow_inf_nan=True):
     their type alone.
     """
     # Try parsing the literal in order of (assumed) frequency of types
+    txt = text.strip()
     # Integer
-    if integer_pattern.fullmatch(text) is not None:
-        return builtins.int(text), None
+    if integer_pattern.fullmatch(txt) is not None:
+        return builtins.int(txt), None
     # Float
-    elif (float_pattern.fullmatch(text) is not None or
+    elif (float_pattern.fullmatch(txt) is not None or
           (allow_inf_nan and
-           inf_nan_pattern.fullmatch(text) is not None)):
-        return builtins.float(text), None
+           inf_nan_pattern.fullmatch(txt) is not None)):
+        return builtins.float(txt), None
     # Boolean
-    elif bool_true_pattern.fullmatch(text) is not None:
+    elif bool_true_pattern.fullmatch(txt) is not None:
         return True, None
-    elif bool_false_pattern.fullmatch(text) is not None:
+    elif bool_false_pattern.fullmatch(txt) is not None:
         return False, None
-    # None / Null
-    elif none_pattern.fullmatch(text) is not None:
+    # None
+    elif none_pattern.fullmatch(txt) is not None:
         return None, None
     # Name / Keyword / Identifier.  This must come after the other atoms
     # whose representations are words.
-    elif name_pattern.fullmatch(text) is not None:
-        return text, None
+    elif name_pattern.fullmatch(txt) is not None:
+        return txt, None
     # Whitespace, strings, or non-atoms
     else:
         return default, ParseError('Cannot parse an atom from', text)
