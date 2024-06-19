@@ -603,11 +603,9 @@ def is_int(text):
     """Whether the given text can be parsed as an integer."""
     return integer_pattern.fullmatch(text.strip()) is not None
 
-
 def int(text, default=None):
     """Return an integer parsed from the given text, else `default`."""
     return builtins.int(text) if is_int(text) else default
-
 
 def int_err(text):
     """
@@ -629,13 +627,11 @@ def is_float(text, allow_inf_nan=True):
             (allow_inf_nan and
              inf_nan_pattern.fullmatch(txt) is not None))
 
-
 def float(text, default=None, allow_inf_nan=True):
     """Return a float parsed from the given text, else `default`."""
     return (builtins.float(text)
             if is_float(text, allow_inf_nan)
             else default)
-
 
 def float_err(text, allow_inf_nan=True):
     """
@@ -655,7 +651,6 @@ def is_bool(text):
     return (bool_true_pattern.fullmatch(txt) is not None
             or bool_false_pattern.fullmatch(txt) is not None)
 
-
 def bool(text, default=None):
     """Return a boolean parsed from the given text, else `default`."""
     txt = text.strip()
@@ -665,7 +660,6 @@ def bool(text, default=None):
         return False
     else:
         return default
-
 
 def bool_err(text):
     """
@@ -726,12 +720,10 @@ def is_name(text):
     """
     return name_pattern.fullmatch(text.strip()) is not None
 
-
 def name(text, default=None):
     """Return a name parsed from the given text, else `default`."""
     txt = text.strip()
     return txt if is_name(txt) else default
-
 
 def name_err(text):
     """
@@ -778,7 +770,6 @@ def is_atom(text, allow_inf_nan=True):
             is_bool(txt) or
             is_none(txt) or
             is_name(txt))
-
 
 def atom_err(text, default=None, allow_inf_nan=True):
     """
