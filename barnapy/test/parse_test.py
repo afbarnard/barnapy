@@ -1,11 +1,12 @@
 """Tests `parse.py`."""
 
-# Copyright (c) 2020 Aubrey Barnard.
+# Copyright (c) 2020, 2023-2024 Aubrey Barnard.
 #
 # This is free, open software released under the MIT license.  See
 # `LICENSE` for details.
 
 
+import datetime
 import fractions
 import itertools as itools
 import math
@@ -313,3 +314,28 @@ class DateTimePatternsTest(unittest.TestCase):
 
     def test_is_timedelta(self):
         self.assertFalse(parse.is_timedelta(''))
+
+
+class MkParseTest(unittest.TestCase):
+
+    def test_mk_parse_numeric_empty_date_bool_none(self):
+        texts = [
+            '+123', '-31415926', '12d3',
+            '3.1415926', '-1.23e-45', 'nAn', '-inF',
+            '0001-01-01', '+2222+12+22', '2024-06-19',
+            'true', 'FALSE', 'on', 'no',
+            'none', 'NONE', 'null', 'na',
+            '', '  ', '\t\v', '\r\n', '   .   ',
+        ]
+        try_construct = parse.mk_parse_numeric_empty_date_bool_none()
+        vals = [try_construct(t, t)[1] for t in texts]
+        self.assertEqual([123, -31415926, '12d3'], vals[0:3])
+        self.assertEqual([3.1415926, -1.23e-45], vals[3:5])
+        self.assertTrue(math.isnan(vals[5]))
+        self.assertEqual(float('-inf'), vals[6])
+        dt = datetime.date
+        self.assertEqual([dt(1, 1, 1), dt(2222, 12, 22), dt(2024, 6, 19)],
+                         vals[7:10])
+        self.assertEqual([True, False, 'on', 'no'], vals[10:14])
+        self.assertEqual([None, None, 'null', 'na'], vals[14:18])
+        self.assertEqual([None, None, None, None, '   .   '], vals[18:23])

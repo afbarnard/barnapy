@@ -624,6 +624,18 @@ def mk_try_construct(
     return try_construct
 
 
+def mk_parse_numeric_empty_date_bool_none(
+        allow_inf_nan=True, date_pattern=date_ymd_pattern, empty_value=None):
+    return mk_try_construct(
+        int_err,
+        lambda text: float_err(text, allow_inf_nan),
+        lambda text: empty_err(text, empty_value),
+        lambda text: date_err(text, date_pattern),
+        bool_err,
+        none_err,
+    )
+
+
 # Detecting and parsing various atomic literals (atoms)
 
 
@@ -803,6 +815,13 @@ def none_word_err(text: str) -> (None, ParseError):
 def is_empty(text):
     """Whether the given text is empty or only whitespace characters."""
     return empty_pattern.fullmatch(text) is not None
+
+def empty_err(text, value=None):
+    """Return the given value if the given text is empty / whitespace."""
+    if is_empty(text):
+        return (value, None)
+    else:
+        return (None, ParseError('Not empty or whitespace', text))
 
 
 def is_atom(text, allow_inf_nan=True):
