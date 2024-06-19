@@ -239,8 +239,8 @@ timestamp_pattern = re.compile(
     )
 
 """
-Pattern that matches amounts of time.  (Make sure to test that match
-group 'delta' isn't empty, though.)
+Pattern that matches amounts of time (only if match group 'delta'
+isn't empty, though, so you have to check that yourself).
 """
 timedelta_pattern = re.compile(
     r'(?P<sign>[-+])?(?P<delta>'
@@ -552,16 +552,16 @@ def parse(text, detectors, constructors, default=None):
     return default, ParseError('Cannot parse', text)
 
 
-def mk_match(*matchers: Callable[[str],bool]) -> Callable[[str],int]:
+def mk_match(*matchers: Callable[[str], bool]) -> Callable[[str], int]:
     """
-    Make a function for matching text from the given sequence of
-    matchers.
+    Make a function for matching text according to the given
+    sequence of matchers.
 
-    The returned function applies the given matchers (functions for
-    matching text) in order and returns the index of the first matcher
-    that matches the text or `None` otherwise.
+    The returned function, `match(text)`, applies the given matchers
+    (functions for matching text) in order to the provided text and
+    returns the index of the first matcher that matches or `None` if
+    none of them matches.
     """
-    matchers = list(matchers)
     def match(text: str) -> int:
         for (idx, matcher) in enumerate(matchers):
             if matcher(text):
@@ -572,28 +572,56 @@ def mk_match(*matchers: Callable[[str],bool]) -> Callable[[str],int]:
 
 def mk_match_and_construct(
         *matchers_constructors: tuple[
-            Callable[[str],bool],
-            Callable[[str],tuple[object,ParseError]],
+            Callable[[str], bool],
+            Callable[[str], tuple[object, ParseError]],
         ],
-) -> Callable[[str],tuple[int,object,ParseError]]:
+) -> Callable[[str, object], tuple[int, object, ParseError]]:
     """
-    Make a function for matching text and constructing a value from that text.
+    Make a function for matching text and constructing a value from
+    that text according to the given sequence of matchers and
+    constructors.
 
-    The returned function applies the given matchers (functions for
-    matching text) in order and returns the index of the first matcher
-    that matches and the result of applying the corresponding
-    constructor, where the constructor returns a (value, error) pair per
-    Go style.  These are returned as the triple (index, constructed
-    value, error).  If there is no match, `(None, None, None)` is
-    returned.
+    The returned function, `match_and_construct(text, default=None)`,
+    applies the given matchers (functions for matching text) in order to
+    the provided text and returns the index of the first matcher that
+    matches along with the result of applying the corresponding
+    constructor, where each constructor returns a (value, error) pair
+    per Go style.  These results are returned as the triple (index,
+    constructed value, error).  If there is no match, then `(None,
+    default, None)` is returned.
     """
-    def match_and_construct(text: str) -> tuple[int,object,ParseError]:
+    def match_and_construct(text: str, default=None) -> tuple[
+            int, object, ParseError]:
         for (idx, (matcher, constructor)) in enumerate(matchers_constructors):
             if matcher(text):
                 (val, err) = constructor(text)
                 return (idx, val, err)
-        return (None, None, None)
+        return (None, default, None)
     return match_and_construct
+
+
+def mk_try_construct(
+        *try_constructors: Callable[[str], tuple[object, ParseError]]
+) -> Callable[[str], tuple[int, object]]:
+    """
+    Make a function for trying to construct a value from text
+    according to the given sequence of constructors.
+
+    The returned function, `try_construct(text, default=None)`, applies
+    the given try–constructors in order to the provided text and returns
+    the index of the first constructor that succeeds (doesn't return an
+    error) along with the value it constructed, where each
+    try–constructor returns a (value, error) pair per Go style.  These
+    results are returned as the pair (index, constructed value).  If no
+    constructor succeeds, then `(None, default)` is returned.
+    """
+    def try_construct(text: str, default=None) -> tuple[int, object]:
+        for (idx, constructor) in enumerate(try_constructors):
+            (val, err) = constructor(text)
+            if err is None:
+                return (idx, val)
+        return (None, default)
+    return try_construct
 
 
 # Detecting and parsing various atomic literals (atoms)
@@ -831,7 +859,7 @@ def is_date(text: str) -> bool:
 def date(text: str, default=None) -> datetime.date: # TODO
     return NotImplemented
 
-def date_err(text: str) -> tuple[datetime.date,ParseError]: # TODO
+def date_err(text: str) -> tuple[datetime.date, ParseError]: # TODO
     return NotImplemented
 
 
