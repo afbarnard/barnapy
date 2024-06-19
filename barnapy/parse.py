@@ -26,7 +26,7 @@ from collections.abc import Callable, Iterable
 import ast
 import builtins
 import enum
-import datetime
+import datetime as pydt
 import re
 
 
@@ -202,8 +202,8 @@ float_range_pattern = re.compile('({0})?:({0})?'.format(float_pattern.pattern))
 
 """Pattern that matches dates in year-month-day order."""
 date_ymd_pattern = re.compile(
-    r'(?P<sign>[-+])?(?P<year>\d+)(?P<d_sep>[^:\d])(?P<month>\d{1,2})'
-    r'(?P=d_sep)(?P<day>\d{1,2})'
+    r'(?P<sign>[-+])?(?P<year>\d+)(?P<sep>[^:\d])(?P<month>\d{1,2})'
+    r'(?P=sep)(?P<day>\d{1,2})'
 )
 
 """
@@ -870,15 +870,58 @@ def pyliteral_err(text, default=None):
 # Dates and times
 
 
-def is_date(text: str) -> bool:
+def is_date(text: str, date_pattern: re.Pattern=date_ymd_pattern) -> bool:
     """Whether the given text can be parsed as a date."""
-    return date_ymd_pattern.fullmatch(text.strip()) is not None
+    return date_pattern.fullmatch(text.strip()) is not None
 
-def date(text: str, default=None) -> datetime.date: # TODO
-    return NotImplemented
+def date_err(text: str, date_pattern: re.Pattern=date_ymd_pattern) -> tuple[
+        pydt.date, ParseError]:
+    """
+    Parse a date from the given text using the given pattern.
 
-def date_err(text: str) -> tuple[datetime.date, ParseError]: # TODO
-    return NotImplemented
+    Return a (value, error) pair per Go style.
+
+    The pattern must have the named match groups {year, month, day},
+    which are integers.
+    """
+    txt = text.strip()
+    mtch = date_pattern.fullmatch(txt)
+    if mtch is None:
+        return (None, ParseError('Could not parse a date from', text))
+    # Parse the date components from the match
+    grp_nm2txt = mtch.groupdict()
+    components = []
+    for comp_name in ('year', 'month', 'day'):
+        (val, err) = int_err(grp_nm2txt[comp_name])
+        if err is not None:
+            return (None, ParseError(
+                f'Could not parse a {comp_name} number from',
+                grp_nm2txt[comp_name]))
+        components.append(val)
+    (year, month, day) = components
+    # Handle an optional sign (even though Python's date class doesn't
+    # allow BCE (negative) years despite it saying dates are
+    # "indefinitely extended in both directions")
+    if 'sign' in grp_nm2txt:
+        sign = grp_nm2txt['sign']
+        if sign in (None, '+'):
+            pass
+        elif sign == '-':
+            year = -year
+        else:
+            return (None, ParseError('Not the sign of a number', sign))
+    # Let the date constructor handle normalization / validation from
+    # here
+    try:
+        return (pydt.date(year, month, day), None)
+    except ValueError as err:
+        return (None, err)
+
+def date(
+        text: str, default=None, date_pattern: re.Pattern=date_ymd_pattern,
+) -> pydt.date:
+    (date, err) = date_err(text, date_pattern)
+    return date if err is None else default
 
 
 def is_time(text: str) -> bool:
@@ -923,14 +966,14 @@ def timestamp(text, default=None):
     tz = groups.get('tz')
     if tz is not None:
         tz_str = groups['tz']
-        delta = datetime.timedelta(
+        delta = pydt.timedelta(
             hours=int(tz_str[1:3]), minutes=int(tz_str[3:]))
         if tz_str[0] == '-':
-            tz = datetime.timezone(-delta)
+            tz = pydt.timezone(-delta)
         else:
-            tz = datetime.timezone(delta)
+            tz = pydt.timezone(delta)
     # Parse the fields and return as a datetime
-    return datetime.datetime(
+    return pydt.datetime(
         year=int(groups['year']),
         month=int(groups['month']),
         day=int(groups['day']),
