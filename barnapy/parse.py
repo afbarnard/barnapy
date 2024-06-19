@@ -16,7 +16,7 @@ Functions that do not use Go style return a sentinel value.
 Requires Python >= 3.4 for `re.fullmatch`.
 """
 
-# Copyright (c) 2015-2020, 2023 Aubrey Barnard.
+# Copyright (c) 2015-2020, 2023-2024 Aubrey Barnard.
 #
 # This is free software released under the MIT license.  See LICENSE for
 # details.
@@ -257,14 +257,24 @@ timedelta_pattern = re.compile(
 
 # Constants
 
-"""Pattern that matches True (and yes)"""
-bool_true_pattern = re.compile(r'(?:true|yes)', re.IGNORECASE)
+"""Pattern that matches True"""
+bool_true_pattern = re.compile(r'true', re.IGNORECASE)
 
-"""Pattern that matches False (and no)"""
-bool_false_pattern = re.compile(r'(?:false|no)', re.IGNORECASE)
+"""Pattern that matches common synonyms for True (yes, on)"""
+bool_word_true_pattern = re.compile(r'(?:yes|on)', re.IGNORECASE)
 
-"""Pattern that matches None (and null, nil, and NA)"""
-none_pattern = re.compile(r'n(?:a|one|ull|il)', re.IGNORECASE)
+"""Pattern that matches False"""
+bool_false_pattern = re.compile(r'false', re.IGNORECASE)
+
+"""Pattern that matches common synonyms for False (no, off)"""
+bool_word_false_pattern = re.compile(r'(?:no|off)', re.IGNORECASE)
+
+"""Pattern that matches None"""
+none_pattern = re.compile(r'none', re.IGNORECASE)
+
+"""Pattern that matches common synonyms for None (null, nil, na)"""
+none_word_pattern = re.compile(r'n(?:a|ull|il)', re.IGNORECASE)
+
 
 # Lists
 
@@ -671,6 +681,43 @@ def bool_err(text):
     else:
         return None, ParseError('Cannot parse a boolean from', text)
 
+def is_bool_word(text):
+    """
+    Whether the given text can be parsed as a boolean synonym word
+    (no, yes, off, on).
+    """
+    text = text.strip()
+    return (bool_word_true_pattern.fullmatch(text) is not None
+            or bool_word_false_pattern.fullmatch(text) is not None)
+
+def bool_word(text, default=None):
+    """
+    Return a boolean synonym word parsed from the given text, else
+    `default`.
+    """
+    text = text.strip()
+    if bool_word_true_pattern.fullmatch(text) is not None:
+        return True
+    elif bool_word_false_pattern.fullmatch(text) is not None:
+        return False
+    else:
+        return default
+
+def bool_word_err(text):
+    """
+    Parse a boolean synonym word from the given text.
+
+    Return a (value, error) pair per Go style.
+    """
+    text = text.strip()
+    if bool_word_true_pattern.fullmatch(text) is not None:
+        return True, None
+    elif bool_word_false_pattern.fullmatch(text) is not None:
+        return False, None
+    else:
+        return None, ParseError(
+            'Cannot parse a boolean synonym word from', text)
+
 
 def is_name(text):
     """
@@ -707,8 +754,12 @@ def name_err(text):
 
 
 def is_none(text):
-    """Whether the given text is None or a synonym (null, nil, na)."""
-    return none_pattern.fullmatch(text) is not None
+    """Whether the given text is None."""
+    return none_pattern.fullmatch(text.strip()) is not None
+
+def is_none_word(text):
+    """Whether the given text is a synonym word for None (null, nil, na)."""
+    return none_word_pattern.fullmatch(text.strip()) is not None
 
 
 def is_empty(text):
