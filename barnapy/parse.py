@@ -129,7 +129,8 @@ none_word_pattern = re.compile(r'n(?:a|ull|il)', re.IGNORECASE)
 
 
 """Pattern that matches integer range."""
-integer_range_pattern = re.compile('({0})?:({0})?'.format(integer_pattern.pattern))
+integer_range_pattern = re.compile(
+    '({0})?:({0})?'.format(integer_pattern.pattern))
 
 """Pattern that matches float range."""
 float_range_pattern = re.compile('({0})?:({0})?'.format(float_pattern.pattern))
@@ -236,7 +237,8 @@ name_pattern = re.compile(r'[a-zA-Z_]\w*')
 
 
 """Pattern that matches punctuation"""
-punctuation_word_pattern = re.compile('[-()\'".,:;=+*/`~!@#$%^&?_\\\\|[\\]{}<>]+')
+punctuation_word_pattern = re.compile(
+    '[-()\'".,:;=+*/`~!@#$%^&?_\\\\|[\\]{}<>]+')
 
 
   ### Strings & Quotes ###
@@ -311,27 +313,27 @@ comment_hash_single_pattern = re.compile(
   ### Numbers ###
 
 
-def is_int(text):
+def is_int(text: str) -> builtins.bool:
     """Whether the given text can be parsed as an integer."""
     return integer_pattern.fullmatch(text.strip()) is not None
 
-def int(text, default=None):
+def int(text: str, default: object=None) -> builtins.int | object:
     """Return an integer parsed from the given text, else `default`."""
     return builtins.int(text) if is_int(text) else default
 
-def int_err(text):
+def int_err(text: str) -> tuple[builtins.int, ParseError]:
     """
     Parse an integer from the given text.
 
     Return a (value, error) pair per Go style.
     """
     if is_int(text):
-        return builtins.int(text), None
+        return (builtins.int(text), None)
     else:
-        return None, ParseError('Cannot parse an integer from', text)
+        return (None, ParseError('Cannot parse an integer from', text))
 
 
-def is_float(text, allow_inf_nan=True):
+def is_float(text: str, allow_inf_nan: builtins.bool=True) -> builtins.bool:
     """Whether the given text can be parsed as a float."""
     txt = text.strip()
     return (float_pattern.fullmatch(txt) is not None or
@@ -339,34 +341,38 @@ def is_float(text, allow_inf_nan=True):
             (allow_inf_nan and
              inf_nan_pattern.fullmatch(txt) is not None))
 
-def float(text, default=None, allow_inf_nan=True):
+def float(
+        text: str, default: object=None, allow_inf_nan: builtins.bool=True,
+) -> builtins.float | object:
     """Return a float parsed from the given text, else `default`."""
     return (builtins.float(text)
             if is_float(text, allow_inf_nan)
             else default)
 
-def float_err(text, allow_inf_nan=True):
+def float_err(
+        text: str, allow_inf_nan: builtins.bool=True,
+) -> tuple[builtins.float, ParseError]:
     """
     Parse a float from the given text.
 
     Return a (value, error) pair per Go style.
     """
     if is_float(text, allow_inf_nan):
-        return builtins.float(text), None
+        return (builtins.float(text), None)
     else:
-        return None, ParseError('Cannot parse a float from', text)
+        return (None, ParseError('Cannot parse a float from', text))
 
 
   ### Constants / Nothings ###
 
 
-def is_bool(text):
+def is_bool(text: str) -> builtins.bool:
     """Whether the given text can be parsed as a boolean."""
     txt = text.strip()
     return (bool_true_pattern.fullmatch(txt) is not None
             or bool_false_pattern.fullmatch(txt) is not None)
 
-def bool(text, default=None):
+def bool(text: str, default: object=None) -> builtins.bool | object:
     """Return a boolean parsed from the given text, else `default`."""
     txt = text.strip()
     if bool_true_pattern.fullmatch(txt) is not None:
@@ -376,7 +382,7 @@ def bool(text, default=None):
     else:
         return default
 
-def bool_err(text):
+def bool_err(text: str) -> tuple[builtins.bool, ParseError]:
     """
     Parse a boolean from the given text.
 
@@ -384,13 +390,13 @@ def bool_err(text):
     """
     txt = text.strip()
     if bool_true_pattern.fullmatch(txt) is not None:
-        return True, None
+        return (True, None)
     elif bool_false_pattern.fullmatch(txt) is not None:
-        return False, None
+        return (False, None)
     else:
-        return None, ParseError('Cannot parse a boolean from', text)
+        return (None, ParseError('Cannot parse a boolean from', text))
 
-def is_bool_word(text):
+def is_bool_word(text: str) -> builtins.bool:
     """
     Whether the given text can be parsed as a boolean synonym word
     (no, yes, off, on).
@@ -399,7 +405,7 @@ def is_bool_word(text):
     return (bool_word_true_pattern.fullmatch(txt) is not None
             or bool_word_false_pattern.fullmatch(txt) is not None)
 
-def bool_word(text, default=None):
+def bool_word(text: str, default: object=None) -> builtins.bool | object:
     """
     Return a boolean synonym word parsed from the given text, else
     `default`.
@@ -412,7 +418,7 @@ def bool_word(text, default=None):
     else:
         return default
 
-def bool_word_err(text):
+def bool_word_err(text: str) -> tuple[builtins.bool, ParseError]:
     """
     Parse a boolean synonym word from the given text.
 
@@ -420,12 +426,12 @@ def bool_word_err(text):
     """
     txt = text.strip()
     if bool_word_true_pattern.fullmatch(txt) is not None:
-        return True, None
+        return (True, None)
     elif bool_word_false_pattern.fullmatch(txt) is not None:
-        return False, None
+        return (False, None)
     else:
-        return None, ParseError(
-            'Cannot parse a boolean synonym word from', text)
+        return (None, ParseError(
+            'Cannot parse a boolean synonym word from', text))
 
 
 # The following atomic literals may only have functions for detection
@@ -435,22 +441,22 @@ def bool_word_err(text):
 # values are possible but likely very application-specific.
 
 
-def is_none(text):
+def is_none(text: str) -> builtins.bool:
     """Whether the given text is None."""
     return none_pattern.fullmatch(text.strip()) is not None
 
-def none_err(text: str) -> (None, ParseError):
+def none_err(text: str) -> tuple[None, ParseError]:
     """Parse `None` from the given text or fail with an error."""
     if is_none(text):
         return (None, None)
     else:
         return (None, ParseError('Cannot parse `None` from', text))
 
-def is_none_word(text):
+def is_none_word(text: str) -> builtins.bool:
     """Whether the given text is a synonym word for None (null, nil, na)."""
     return none_word_pattern.fullmatch(text.strip()) is not None
 
-def none_word_err(text: str) -> (None, ParseError):
+def none_word_err(text: str) -> tuple[None, ParseError]:
     """
     Parse `None` from the given 'none' synonym text or fail with an
     error.
@@ -462,11 +468,11 @@ def none_word_err(text: str) -> (None, ParseError):
             'Cannot parse a `None` synonym word from', text))
 
 
-def is_empty(text):
+def is_empty(text: str) -> builtins.bool:
     """Whether the given text is empty or only whitespace characters."""
     return empty_pattern.fullmatch(text) is not None
 
-def empty_err(text, value=None):
+def empty_err(text: str, value: object=None) -> tuple[object, ParseError]:
     """Return the given value if the given text is empty / whitespace."""
     if is_empty(text):
         return (value, None)
@@ -477,19 +483,19 @@ def empty_err(text, value=None):
   ### Symbols / Names / Identifiers ###
 
 
-def is_name(text):
+def is_name(text: str) -> builtins.bool:
     """
     Whether the given text can be parsed as a name, keyword, or
     identifier.
     """
     return name_pattern.fullmatch(text.strip()) is not None
 
-def name(text, default=None):
+def name(text: str, default: object=None) -> str | object:
     """Return a name parsed from the given text, else `default`."""
     txt = text.strip()
     return txt if is_name(txt) else default
 
-def name_err(text):
+def name_err(text: str) -> tuple[str, ParseError]:
     """
     Parse a name from the given text.
 
@@ -497,15 +503,15 @@ def name_err(text):
     """
     txt = text.strip()
     if is_name(txt):
-        return txt, None
+        return (txt, None)
     else:
-        return None, ParseError('Cannot parse a name from', text)
+        return (None, ParseError('Cannot parse a name from', text))
 
 
   ### Any Atom ###
 
 
-def is_atom(text, allow_inf_nan=True):
+def is_atom(text: str, allow_inf_nan: builtins.bool=True) -> builtins.bool:
     """
     Whether the given text can be parsed as an atomic literal (int,
     float, bool, None, name).
@@ -517,7 +523,9 @@ def is_atom(text, allow_inf_nan=True):
             is_none(txt) or
             is_name(txt))
 
-def atom_err(text, default=None, allow_inf_nan=True):
+def atom_err(
+        text: str, default: object=None, allow_inf_nan: builtins.bool=True,
+) -> tuple[object, ParseError]:
     """
     Parse an atomic literal (int, float, bool, None, name) from the
     given text.
@@ -527,33 +535,33 @@ def atom_err(text, default=None, allow_inf_nan=True):
     returned.  This is needed for distinguishable parsing of None.
 
     This recognizes and parses all the atoms that are distinguishable by
-    their type alone.
+    their appearance alone.
     """
     # Try parsing the literal in order of (assumed) frequency of types
     txt = text.strip()
     # Integer
     if integer_pattern.fullmatch(txt) is not None:
-        return builtins.int(txt), None
+        return (builtins.int(txt), None)
     # Float
     elif (float_pattern.fullmatch(txt) is not None or
           (allow_inf_nan and
            inf_nan_pattern.fullmatch(txt) is not None)):
-        return builtins.float(txt), None
+        return (builtins.float(txt), None)
     # Boolean
     elif bool_true_pattern.fullmatch(txt) is not None:
-        return True, None
+        return (True, None)
     elif bool_false_pattern.fullmatch(txt) is not None:
-        return False, None
+        return (False, None)
     # None
     elif none_pattern.fullmatch(txt) is not None:
-        return None, None
+        return (None, None)
     # Name / Keyword / Identifier.  This must come after the other atoms
     # whose representations are words.
     elif name_pattern.fullmatch(txt) is not None:
-        return txt, None
+        return (txt, None)
     # Whitespace, strings, or non-atoms
     else:
-        return default, ParseError('Cannot parse an atom from', text)
+        return (default, ParseError('Cannot parse an atom from', text))
 
 
  #### Detecting & Parsing Compound Literals ####
@@ -562,21 +570,23 @@ def atom_err(text, default=None, allow_inf_nan=True):
   ### Any Python Literal ###
 
 
-def pyliteral_err(text, default=None):
+def pyliteral_err(text: str, default: object=None) -> tuple[object, ParseError]:
     """
     Parse a Python literal (anything recognized by `ast.literal_eval`)
     from the given text.
     """
     try:
-        return ast.literal_eval(text), None
-    except (SyntaxError, ValueError) as e:
-        return default, e
+        return (ast.literal_eval(text), None)
+    except (SyntaxError, ValueError) as err:
+        return (default, err)
 
 
   ### Dates & Times ###
 
 
-def is_date(text: str, date_pattern: re.Pattern=date_ymd_pattern) -> bool:
+def is_date(
+        text: str, date_pattern: re.Pattern=date_ymd_pattern,
+) -> builtins.bool:
     """Whether the given text can be parsed as a date."""
     return date_pattern.fullmatch(text.strip()) is not None
 
@@ -630,7 +640,7 @@ def date(
     return date if err is None else default
 
 
-def is_time(text: str) -> bool:
+def is_time(text: str) -> builtins.bool:
     """Whether the given text can be parsed as a time."""
     return time_pattern.fullmatch(text.strip()) is not None
 
@@ -641,7 +651,7 @@ def time_err(): # TODO
     return NotImplemented
 
 
-def is_datetime(text: str) -> bool:
+def is_datetime(text: str) -> builtins.bool:
     """Whether the given text can be parsed as a datetime (timestamp)."""
     return datetime_pattern.fullmatch(text.strip()) is not None
 
@@ -652,10 +662,11 @@ def datetime_err(): # TODO
     return NotImplemented
 
 
-def timestamp(text, default=None):
+def timestamp(text: str, default: object=None) -> pydt.datetime:
     match = timestamp_pattern.fullmatch(text.strip())
     if match is None:
         return default
+    int = builtins.int
     groups = match.groupdict()
     # Fix the fractional second if given
     microsecond = groups.get('fractional_second')
@@ -693,7 +704,7 @@ def timestamp(text, default=None):
         )
 
 
-def is_timedelta(text: str) -> bool:
+def is_timedelta(text: str) -> builtins.bool:
     """Whether the given text can be parsed as a time delta."""
     match = timedelta_pattern.fullmatch(text.strip())
     return match is not None and len(match.group('delta')) > 0
@@ -713,7 +724,7 @@ def timedelta_err(): # TODO
 
 _array_index_pattern = re.compile(r'\s*(\w+)\s*\[\s*(\d+)\s*\]\s*')
 
-def array_index(text):
+def array_index(text: str, default: object=None) -> tuple[str, str] | object:
     """
     Parse the text as array indexing syntax (e.g. "a[0]") and return a
     (name, index) pair.
@@ -722,9 +733,9 @@ def array_index(text):
     if match is not None:
         return match.groups()
     else:
-        return None
+        return default
 
-def array_index_err(text):
+def array_index_err(text: str) -> tuple[tuple[str, str], ParseError]:
     """
     Parse an array index reference from the given text.
 
@@ -732,10 +743,10 @@ def array_index_err(text):
     """
     result = array_index(text)
     if result is None:
-        return None, ParseError(
-            'Cannot parse an array index from', text)
+        return (None, ParseError(
+            'Cannot parse an array index from', text))
     else:
-        return result, None
+        return (result, None)
 
 
   ### Datalog Predicates ###
@@ -744,21 +755,21 @@ def array_index_err(text):
 _predicate_pattern = re.compile(
     r'\s*(\w[\w!?@$_-]*)(?:\s*\((.*)\))?\s*')
 
-def predicate(text):
+def predicate(text: str, default: object=None) -> tuple[str, list] | object:
     match = _predicate_pattern.match(text)
     if match:
-        name, args_text = match.groups()
+        (name, args_text) = match.groups()
         if (args_text is None
                 or len(args_text) == 0
                 or args_text.isspace()):
             args = ()
         else:
             args = naive_list_split_pattern.split(args_text.strip())
-        return name, args
+        return (name, args)
     else:
-        return None
+        return default
 
-def predicate_err(text):
+def predicate_err(text: str) -> tuple[tuple[str, list], ParseError]:
     """
     Parse a predicate from the given text.
 
@@ -766,9 +777,9 @@ def predicate_err(text):
     """
     result = predicate(text)
     if result is None:
-        return None, ParseError('Cannot parse a predicate from', text)
+        return (None, ParseError('Cannot parse a predicate from', text))
     else:
-        return result, None
+        return (result, None)
 
 
  #### Generalized Parsing: Matcher–Constructors ####
@@ -803,7 +814,8 @@ def parse(text, detectors, constructors, default=None):
     return default, ParseError('Cannot parse', text)
 
 
-def mk_match(*matchers: Callable[[str], bool]) -> Callable[[str], int]:
+def mk_match(*matchers: Callable[[str], builtins.bool]) -> Callable[
+        [str], builtins.int]:
     """
     Make a function for matching text according to the given
     sequence of matchers.
@@ -813,7 +825,7 @@ def mk_match(*matchers: Callable[[str], bool]) -> Callable[[str], int]:
     returns the index of the first matcher that matches or `None` if
     none of them matches.
     """
-    def match(text: str) -> int:
+    def match(text: str) -> builtins.int:
         for (idx, matcher) in enumerate(matchers):
             if matcher(text):
                 return idx
@@ -823,10 +835,10 @@ def mk_match(*matchers: Callable[[str], bool]) -> Callable[[str], int]:
 
 def mk_match_and_construct(
         *matchers_constructors: tuple[
-            Callable[[str], bool],
+            Callable[[str], builtins.bool],
             Callable[[str], tuple[object, ParseError]],
         ],
-) -> Callable[[str, object], tuple[int, object, ParseError]]:
+) -> Callable[[str, object], tuple[builtins.int, object, ParseError]]:
     """
     Make a function for matching text and constructing a value from
     that text according to the given sequence of matchers and
@@ -841,8 +853,8 @@ def mk_match_and_construct(
     constructed value, error).  If there is no match, then `(None,
     default, None)` is returned.
     """
-    def match_and_construct(text: str, default=None) -> tuple[
-            int, object, ParseError]:
+    def match_and_construct(text: str, default: object=None) -> tuple[
+            builtins.int, object, ParseError]:
         for (idx, (matcher, constructor)) in enumerate(matchers_constructors):
             if matcher(text):
                 (val, err) = constructor(text)
@@ -853,7 +865,7 @@ def mk_match_and_construct(
 
 def mk_try_construct(
         *try_constructors: Callable[[str], tuple[object, ParseError]]
-) -> Callable[[str], tuple[int, object]]:
+) -> Callable[[str, object], tuple[builtins.int, object]]:
     """
     Make a function for trying to construct a value from text
     according to the given sequence of constructors.
@@ -866,7 +878,8 @@ def mk_try_construct(
     results are returned as the pair (index, constructed value).  If no
     constructor succeeds, then `(None, default)` is returned.
     """
-    def try_construct(text: str, default=None) -> tuple[int, object]:
+    def try_construct(text: str, default: object=None) -> tuple[
+            builtins.int, object]:
         for (idx, constructor) in enumerate(try_constructors):
             (val, err) = constructor(text)
             if err is None:
@@ -876,7 +889,10 @@ def mk_try_construct(
 
 
 def mk_parse_numeric_empty_date_bool_none(
-        allow_inf_nan=True, date_pattern=date_ymd_pattern, empty_value=None):
+        allow_inf_nan: builtins.bool=True,
+        date_pattern: re.Pattern=date_ymd_pattern,
+        empty_value: object=None,
+) -> Callable[[str, object], tuple[builtins.int, object]]:
     return mk_try_construct(
         int_err,
         lambda text: float_err(text, allow_inf_nan),
