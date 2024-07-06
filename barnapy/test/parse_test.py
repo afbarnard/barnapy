@@ -10,6 +10,7 @@ import datetime
 import fractions
 import itertools as itools
 import math
+import re
 import unittest
 
 from .. import parse
@@ -339,3 +340,97 @@ class MkParseTest(unittest.TestCase):
         self.assertEqual([True, False, 'on', 'no'], vals[10:14])
         self.assertEqual([None, None, 'null', 'na'], vals[14:18])
         self.assertEqual([None, None, None, None, '   .   '], vals[18:23])
+
+
+class CliCompoundLiteralsTest(unittest.TestCase):
+
+    def test_cli_list_err(self):
+        tests = [
+            ('', []),
+            ('one', ['one']),
+            (' one ', ['one']),
+            ('one,two', ['one', 'two']),
+            (' one ; two ', ['one', 'two'],
+             None, dict(split_pattern=re.compile(';'))),
+            (' one , two ', [' one ', ' two '], None, dict(strip=False)),
+            (' 0,1, 2 ,3 , 4 ', [0, 1, 2, 3, 4],
+             None, dict(parse_item=parse.int_err)),
+            (' 0 , 1 , 2 , tree3 ', [0, 1, 2],
+             parse.SequenceParseError(
+                 'Cannot parse an integer from', 'tree3', 3),
+             dict(parse_item=parse.int_err)),
+        ]
+        for test_args in tests:
+            with self.subTest(test_args):
+                (text, exp, *args) = test_args
+                exp_err = args[0] if len(args) >= 1 else None
+                kwds = args[1] if len(args) >= 2 else {}
+                (act, act_err) = parse.cli_list_err(text, **kwds)
+                self.assertEqual(exp, act)
+                self.assertEqual(
+                    exp_err.__dict__ if exp_err is not None else None,
+                    act_err.__dict__ if act_err is not None else None)
+
+    def test_cli_kv_pair_err(self):
+        tests = [
+            ('', None, parse.ParseError(
+                'Unable to split into a key and a value', '')),
+            ('one', None, parse.ParseError(
+                'Unable to split into a key and a value', 'one')),
+            ('one:two', ('one', 'two')),
+            (' one : two ', ('one', 'two')),
+            (' one : two : tre ', ('one', 'two : tre')),
+            (' one : two : tre ', (' one ', ' two : tre '), None,
+             dict(strip=False)),
+            ('one/two//tre/for', ('one/two', 'tre/for'), None,
+             dict(split_pattern=re.compile('//'))),
+            (' 1 : 2 ', (1, 2), None,
+             dict(parse_key=parse.int_err, parse_val=parse.int_err)),
+            (' 1 : 2.0 ', None,
+             parse.ParseError('Cannot parse an integer from', '2.0'),
+             dict(parse_key=parse.int_err, parse_val=parse.int_err)),
+            (' 1.0 : 2.0 ', None,
+             parse.ParseError('Cannot parse an integer from', '1.0'),
+             dict(parse_key=parse.int_err, parse_val=parse.int_err)),
+        ]
+        for test_args in tests:
+            with self.subTest(test_args):
+                (text, exp, *args) = test_args
+                exp_err = args[0] if len(args) >= 1 else None
+                kwds = args[1] if len(args) >= 2 else {}
+                (act, act_err) = parse.cli_kv_pair_err(text, **kwds)
+                self.assertEqual(exp, act)
+                self.assertEqual(
+                    exp_err.__dict__ if exp_err is not None else None,
+                    act_err.__dict__ if act_err is not None else None)
+
+    def test_parse_cli_dict_err(self):
+        tests = [
+            ('', {}),
+            ('one', {}, parse.SequenceParseError(
+                'Unable to split into a key and a value', 'one', 0)),
+            ('one:two', {'one': 'two'}),
+            (' one : two , tre : for ', {'one': 'two', 'tre': 'for'}),
+            (' one -- two --- tre -- for ', {'one': 'two', 'tre': 'for'},
+             None, dict(item_split_pattern=re.compile('---'),
+                        kv_split_pattern=re.compile('--'))),
+            (' one : two , tre : for ', {' one ': ' two ', ' tre ': ' for '},
+             None, dict(strip=False)),
+            ('1: 1.0, 2: 2.0', {1: 1.0, 2: 2.0},
+             None, dict(parse_key=parse.int_err,
+                        parse_val=parse.float_err)),
+            ('one:1, two:2, tre:tree3', dict(one=1, two=2),
+             parse.SequenceParseError(
+                 'Cannot parse an integer from', 'tree3', 2),
+             dict(parse_val=parse.int_err)),
+        ]
+        for test_args in tests:
+            with self.subTest(test_args):
+                (text, exp, *args) = test_args
+                exp_err = args[0] if len(args) >= 1 else None
+                kwds = args[1] if len(args) >= 2 else {}
+                (act, act_err) = parse.cli_dict_err(text, **kwds)
+                self.assertEqual(exp, act)
+                self.assertEqual(
+                    exp_err.__dict__ if exp_err is not None else None,
+                    act_err.__dict__ if act_err is not None else None)

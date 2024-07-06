@@ -29,6 +29,14 @@ import builtins
 import enum
 import datetime as pydt
 import re
+import typing
+
+
+##### Types #####
+
+
+T = typing.TypeVar('T')
+ValueErrorParser = Callable[[str], tuple[T | None, Exception | None]]
 
 
 ##### Parsing Errors #####
@@ -43,21 +51,48 @@ class ParseError(Exception):
             source=None,
             line=None,
             column=None,
+            **kwds,
     ):
+        super().__init__(message, bad_text, source, line, column, kwds)
         self.message = message
         self.bad_text = bad_text
         self.source = source
         self.line = line
         self.column = column
+
+    def __str__(self):
         location = ''
-        if source is not None:
-            location += '{}: '.format(source)
-        if line is not None:
-            location += 'line {}: '.format(line)
-        if column is not None:
-            location += 'col {}: '.format(column)
-        super().__init__(
-            '{}{}: {!r}'.format(location, message, bad_text))
+        if self.source is not None:
+            location += '{}: '.format(self.source)
+        if self.line is not None:
+            location += 'line {}: '.format(self.line)
+        if self.column is not None:
+            location += 'col {}: '.format(self.column)
+        return '{}{}: {!r}'.format(location, self.message, self.bad_text)
+
+
+class SequenceParseError(ParseError):
+
+    def __init__(self, message, bad_text, index=None, **kwds):
+        super().__init__(message, bad_text, index=index, **kwds)
+        self.index = index
+
+    def __str__(self):
+        # Make sure to call '__str__' in order to "dereference" the
+        # 'super'.  ('str(super())' doesn't work.)
+        msg = super().__str__()
+        if self.index is not None:
+            msg = f'index {self.index}: {msg}'
+        return msg
+
+    @staticmethod
+    def from_parse_error(error: ParseError, index: int):
+        return SequenceParseError(
+            error.message,
+            error.bad_text,
+            index,
+            **{n: getattr(error, n) for n in ('source', 'line', 'column')}
+        )
 
 
 ##### Useful Patterns / Regular Expressions for Parsing & Lexical Analysis #####
@@ -194,8 +229,23 @@ timedelta_pattern = re.compile(
 )
 
 
-  ### Lists ###
+  ### Splitting and Lists ###
 
+
+def mk_split_pattern(
+        separator: str, allow_surrounding_whitespace: bool=True,
+) -> re.Pattern:
+    pat = re.escape(separator)
+    if allow_surrounding_whitespace:
+        pat = rf'\s*{pat}\s*'
+    return re.compile(pat)
+
+
+"""Pattern for splitting on commas."""
+comma_split_pattern = re.compile(',')
+
+"""Pattern for splitting on colons."""
+colon_split_pattern = re.compile(':')
 
 """Pattern for splitting lists without nesting or quoting"""
 naive_list_split_pattern = re.compile(r'\s*,\s*')
@@ -714,6 +764,110 @@ def timedelta(): # TODO
 
 def timedelta_err(): # TODO
     return NotImplemented
+
+
+  ### CLI-Style (Naively-Structured) Literals Including Lists and Dicts ###
+
+
+def cli_atom_err(
+        text: str, default: object=None, allow_inf_nan: builtins.bool=True,
+) -> tuple[object, ParseError]:
+    """
+    Parse an atomic CLI literal (int, float, bool) from the given
+    text.
+
+    Return a (value, error) pair per Go style.  If parsing is
+    successful, then (<value>, None) is returned, otherwise (<default>,
+    ParseError) is returned.
+
+    This parses all the atoms that have unambiguous string
+    representations and whose construction is invertible.  These are
+    also the relatively language-agnostic atoms.
+    """
+    txt = text.strip()
+    # Integer
+    if integer_pattern.fullmatch(txt) is not None:
+        return (builtins.int(txt), None)
+    # Float
+    elif (float_pattern.fullmatch(txt) is not None or
+          (allow_inf_nan and
+           inf_nan_pattern.fullmatch(txt) is not None)):
+        return (builtins.float(txt), None)
+    # Boolean
+    elif bool_true_pattern.fullmatch(txt) is not None:
+        return (True, None)
+    elif bool_false_pattern.fullmatch(txt) is not None:
+        return (False, None)
+    else:
+        return (default, ParseError('Cannot parse a CLI atom from', text))
+
+
+def cli_list_err(
+        text: str,
+        parse_item: ValueErrorParser=None,
+        split_pattern: re.Pattern=comma_split_pattern,
+        strip: bool=True,
+) -> tuple[list, Exception]:
+    items = []
+    if len(text) == 0:
+        return (items, None)
+    pieces = split_pattern.split(text)
+    for (idx, piece) in enumerate(pieces):
+        if strip:
+            piece = piece.strip()
+        if parse_item is not None:
+            (val, err) = parse_item(piece)
+            if err is not None:
+                return (items, SequenceParseError.from_parse_error(err, idx))
+        else:
+            val = piece
+        items.append(val)
+    return (items, None)
+
+
+def cli_kv_pair_err(
+        text: str,
+        parse_key: ValueErrorParser=None,
+        parse_val: ValueErrorParser=None,
+        split_pattern: re.Pattern=colon_split_pattern,
+        strip: bool=True,
+) -> tuple[tuple[object, object], Exception]:
+    pieces = split_pattern.split(text, maxsplit=1)
+    if len(pieces) != 2:
+        return (None, ParseError(
+            'Unable to split into a key and a value', text))
+    (key_piece, val_piece) = pieces
+    if strip:
+        key_piece = key_piece.strip()
+        val_piece = val_piece.strip()
+    if parse_key is not None:
+        (key, err) = parse_key(key_piece)
+        if err is not None:
+            return (None, err)
+    else:
+        key = key_piece
+    if parse_val is not None:
+        (val, err) = parse_val(val_piece)
+        if err is not None:
+            return (None, err)
+    else:
+        val = val_piece
+    return ((key, val), None)
+
+
+def cli_dict_err(
+        text: str,
+        parse_key: ValueErrorParser=None,
+        parse_val: ValueErrorParser=None,
+        item_split_pattern: re.Pattern=comma_split_pattern,
+        kv_split_pattern: re.Pattern=colon_split_pattern,
+        strip: bool=True,
+) -> tuple[dict, Exception]:
+    def parse_item(text: str) -> tuple[tuple[object, object], Exception]:
+        return cli_kv_pair_err(
+            text, parse_key, parse_val, kv_split_pattern, strip)
+    (kv_pairs, err) = cli_list_err(text, parse_item, item_split_pattern, strip)
+    return (dict(kv_pairs) if kv_pairs is not None else None, err)
 
 
  #### Detecting & Parsing Expressions ####
