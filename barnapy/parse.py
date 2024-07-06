@@ -387,7 +387,6 @@ def is_float(text: str, allow_inf_nan: builtins.bool=True) -> builtins.bool:
     """Whether the given text can be parsed as a float."""
     txt = text.strip()
     return (float_pattern.fullmatch(txt) is not None or
-            integer_pattern.fullmatch(txt) is not None or
             (allow_inf_nan and
              inf_nan_pattern.fullmatch(txt) is not None))
 
@@ -395,8 +394,9 @@ def float(
         text: str, default: object=None, allow_inf_nan: builtins.bool=True,
 ) -> builtins.float | object:
     """Return a float parsed from the given text, else `default`."""
-    return (builtins.float(text)
-            if is_float(text, allow_inf_nan)
+    txt = text.strip()
+    return (builtins.float(txt)
+            if is_float(txt, allow_inf_nan) or is_int(txt)
             else default)
 
 def float_err(
@@ -407,8 +407,9 @@ def float_err(
 
     Return a (value, error) pair per Go style.
     """
-    if is_float(text, allow_inf_nan):
-        return (builtins.float(text), None)
+    txt = text.strip()
+    if is_float(txt, allow_inf_nan) or is_int(txt):
+        return (builtins.float(txt), None)
     else:
         return (None, ParseError('Cannot parse a float from', text))
 
