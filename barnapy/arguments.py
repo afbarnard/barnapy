@@ -174,15 +174,33 @@ def unwrap_single_values(key, vals):
         return vals
 
 
-def parse_literal(text):
+def parse_atom(text):
+    """
+    Parse the given text as an atomic literal, if possible.  Otherwise
+    just return the text.  Useful as a "value parser" for `parse`.
+
+    Atomic CLI literals are ints, floats, and bools, all the literals
+    that have unambiguous strings and whose construction is invertible.
+    See `parse.cli_atom_err`.
+    """
+    (obj, err) = parselib.cli_atom_err(text)
+    return obj if err is None else text
+
+
+def parse_pyliteral(text):
     """
     Parse the given text as a Python literal, if possible.  Otherwise
     just return the text.  Useful as a "value parser" for `parse`.
 
     A Python literal is anything recognized by `ast.literal_eval`.
     """
-    obj, err = parselib.pyliteral_err(text)
+    (obj, err) = parselib.pyliteral_err(text)
     return obj if err is None else text
+
+
+# TODO @deprecated
+def parse_literal(text):
+    return parse_pyliteral(text)
 
 
 # TODO object to represent keyword and positonal arguments
