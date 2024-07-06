@@ -1057,6 +1057,34 @@ def mk_parse_numeric_empty_date_bool_none(
     )
 
 
+def mk_data_atom_parser( # TODO
+        empty_value: object=None,
+        allow_inf_nan: builtins.bool=True,
+        none_words: set[str]={'none'},
+        true_words: set[str]={'true'},
+        false_words: set[str]={'false'},
+        case_sensitive: builtins.bool=False,
+        date_pattern: re.Pattern=date_ymd_pattern,
+): # TODO try to be faster than 'mk_parse_numeric_empty_date_bool_none'
+    return mk_match_and_construct(
+        (is_int, lambda text: (builtins.int(text), None)), # TODO? int_try_err?
+        (lambda text: is_float(text, allow_inf_nan),
+         lambda text: (builtins.float(text), None)), # TODO? float_try_err?
+        (is_empty, lambda text: (empty_value, None)),
+        #(lambda text: is_keyword(text, none_words, case_sensitive), # TODO
+        # lambda text: (None, None)),
+        #(lambda text: is_keyword(text, true_words, case_sensitive), # TODO
+        # lambda text: (True, None)),
+        #(lambda text: is_keyword(text, false_words, case_sensitive), # TODO
+        # lambda text: (False, None)),
+        (is_date, lambda text: date_err(text, date_pattern)),
+        #(is_datetime, lambda text: datetime_err(text, date_pattern)), # TODO
+        #(is_time, lambda text: time_err(text, date_pattern)), # TODO
+        #(is_timedelta, timedelta_err), # TODO
+        #strip=True, # TODO
+    )
+
+
 ##### Classes & Algorithms to Help with Lexical Analysis & Parsing #####
 
 
