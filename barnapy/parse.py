@@ -364,7 +364,7 @@ comment_hash_single_pattern = re.compile(
 
 
 def is_int(text: str) -> builtins.bool:
-    """Whether the given text can be parsed as an integer."""
+    """Whether the given text repesents an integer."""
     return integer_pattern.fullmatch(text.strip()) is not None
 
 def int(text: str, default: object=None) -> builtins.int | object:
@@ -384,7 +384,7 @@ def int_err(text: str) -> tuple[builtins.int, ParseError]:
 
 
 def is_float(text: str, allow_inf_nan: builtins.bool=True) -> builtins.bool:
-    """Whether the given text can be parsed as a float."""
+    """Whether the given text represents a float."""
     txt = text.strip()
     return (float_pattern.fullmatch(txt) is not None or
             (allow_inf_nan and
@@ -418,7 +418,7 @@ def float_err(
 
 
 def is_bool(text: str) -> builtins.bool:
-    """Whether the given text can be parsed as a boolean."""
+    """Whether the given text represents a boolean."""
     txt = text.strip()
     return (bool_true_pattern.fullmatch(txt) is not None
             or bool_false_pattern.fullmatch(txt) is not None)
@@ -449,8 +449,8 @@ def bool_err(text: str) -> tuple[builtins.bool, ParseError]:
 
 def is_bool_word(text: str) -> builtins.bool:
     """
-    Whether the given text can be parsed as a boolean synonym word
-    (no, yes, off, on).
+    Whether the given text is a boolean synonym word (no, yes, off,
+    on).
     """
     txt = text.strip()
     return (bool_word_true_pattern.fullmatch(txt) is not None
@@ -536,8 +536,7 @@ def empty_err(text: str, value: object=None) -> tuple[object, ParseError]:
 
 def is_name(text: str) -> builtins.bool:
     """
-    Whether the given text can be parsed as a name, keyword, or
-    identifier.
+    Whether the given text is a name, keyword, or identifier.
     """
     return name_pattern.fullmatch(text.strip()) is not None
 
@@ -564,8 +563,8 @@ def name_err(text: str) -> tuple[str, ParseError]:
 
 def is_atom(text: str, allow_inf_nan: builtins.bool=True) -> builtins.bool:
     """
-    Whether the given text can be parsed as an atomic literal (int,
-    float, bool, None, name).
+    Whether the given text represents an atomic literal (int, float,
+    bool, None, name).
     """
     txt = text.strip()
     return (is_int(txt) or
@@ -638,7 +637,7 @@ def pyliteral_err(text: str, default: object=None) -> tuple[object, ParseError]:
 def is_date(
         text: str, date_pattern: re.Pattern=date_ymd_pattern,
 ) -> builtins.bool:
-    """Whether the given text can be parsed as a date."""
+    """Whether the given text represents a date."""
     return date_pattern.fullmatch(text.strip()) is not None
 
 def date_err(text: str, date_pattern: re.Pattern=date_ymd_pattern) -> tuple[
@@ -692,7 +691,7 @@ def date(
 
 
 def is_time(text: str) -> builtins.bool:
-    """Whether the given text can be parsed as a time."""
+    """Whether the given text represents a time."""
     return time_pattern.fullmatch(text.strip()) is not None
 
 def time(): # TODO
@@ -703,7 +702,7 @@ def time_err(): # TODO
 
 
 def is_datetime(text: str) -> builtins.bool:
-    """Whether the given text can be parsed as a datetime (timestamp)."""
+    """Whether the given text represents a datetime (timestamp)."""
     return datetime_pattern.fullmatch(text.strip()) is not None
 
 def datetime(): # TODO
@@ -756,7 +755,7 @@ def timestamp(text: str, default: object=None) -> pydt.datetime:
 
 
 def is_timedelta(text: str) -> builtins.bool:
-    """Whether the given text can be parsed as a time delta."""
+    """Whether the given text represents a time delta."""
     match = timedelta_pattern.fullmatch(text.strip())
     return match is not None and len(match.group('delta')) > 0
 
