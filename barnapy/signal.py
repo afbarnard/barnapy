@@ -8,6 +8,9 @@ Signal processing not provided by SciPy.
 # for details.
 
 
+from collections.abc import Callable, Generator, Sequence
+import enum
+import math
 import numbers
 import typing
 
@@ -82,12 +85,14 @@ def weights_densities(
 ValT = typing.TypeVar('ValT', bound=numbers.Real)
 WgtT = typing.TypeVar('WgtT', bound=numbers.Real)
 CnvT = typing.TypeVar('CnvT', bound=numbers.Real)
+WindowT = tuple[ValT, ValT]
 
 def convolve(
     values: Sequence[ValT],
     weight: Callable[[int, ValT], WgtT],
-    window: Callable[[int, ValT], tuple[int, int]],
-    convolution: Callable[[Sequence[ValT], Sequence[WgtT]], CnvT],
+    window: Callable[[int, ValT], WindowT],
+    convolution: Callable[
+        [Sequence[ValT], Sequence[WgtT], WindowT, WindowT], CnvT],
 ) -> Generator[tuple[int, ValT, WgtT, CnvT]]:
     """
     Convolve the given weighted values according to the given
@@ -95,7 +100,10 @@ def convolve(
 
     Generates one output value for each input value, returned in a tuple
     along with its context, (index, value, weight, convolved value).
-    Assumes the input values are sorted.
+    Conceptually, the input values are the locations / positions and the
+    weights are how much density / mass each value has.  Thus, values
+    are adjacent according to sorted order, and so this assumes the
+    input values are sorted.
 
     In contrast to [`scipy.signal.convolve`](
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.convolve.html),
@@ -105,8 +113,11 @@ def convolve(
     flexibility through callables and allows variable windows (which,
     for example, can be used for asymmetric or for log-scaled windows).
     """
-    return
     n_vals = len(values)
+    if n_vals == 0:
+        return
+    min_val = values[0]
+    max_val = values[-1]
     wgts = [None] * n_vals
     wgt_idx = 0
     idx_lo = 0
@@ -114,8 +125,7 @@ def convolve(
     for (idx, val) in enumerate(values):
         # Window for this value
         (window_lo, window_hi) = window(idx, val)
-        width = window_hi - window_lo
-        assert width >= 0
+        assert window_lo <= window_hi
         # Find the indices of the window
         idx_lo = bisect.bisect_left(values, window_lo, idx_lo, idx)
         idx_hi = bisect.bisect_right(values, window_hi, idx_hi, n_vals)
@@ -127,7 +137,38 @@ def convolve(
         for wgt_idx in range(idx, min(idx_hi, n_vals)):
             wgts[wgt_idx] = weight(idx, val)
         # Calculate the convolution
-        cnv = convolution(values[idx_lo:idx_hi], wgts[idx_lo:idx_hi]) # TODO need window?
-
-
+        cnv = convolution(values, wgts, val, (idx_lo, idx, idx_hi),
+                          (window_lo, window_hi), (min_val, max_val))
         yield (idx, val, wgt, cnv)
+
+
+def kernel_weighted_sum(kernel, values, normalize: bool=True):
+    wgts = [kernel(v) for v in values]
+    # Inner product
+    wgtd_sum = math.fsum(v * k for (v, k) in zip(values, wgts, strict=True))
+    if normalize:
+        wgtd_sum /= math.fsum(wgts)
+    return wgtd_sum
+
+
+def density(
+        values: Sequence[ValT],
+        weights: Sequence[WgtT],
+        value: ValT,
+        indices: tuple[int, int, int],
+        window: WindowT,
+        extrema: WindowT,
+        window_width_addend: WgtT=1,
+) -> CnvT:
+    (lo_idx, val_idx, hi_idx) = indices
+    # Find the effective window width (handle the edges of the data)
+    (window_lo, window_hi) = window
+    (min_val, max_val) = extrema
+    lo_val = max(window_lo, min_val)
+    hi_val = min(window_hi, max_val)
+    width = hi_val - lo_val
+    assert width >= 0
+    # Find the total weight
+    wgt = math.fsum(weights[lo_idx:hi_idx])
+    # Return the density
+    return wgt / (width + window_width_addend)
