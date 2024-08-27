@@ -3,7 +3,7 @@ Utilities for working with tabular data in various separated values
 formats.
 """
 
-# Copyright (c) 2022-2023 Aubrey Barnard.
+# Copyright (c) 2022-2024 Aubrey Barnard.
 #
 # This is free software released under the MIT License.  See LICENSE for
 # details.
@@ -17,6 +17,7 @@ import datetime
 import decimal
 import io
 import re
+import sys
 
 from . import parse
 from . import records
@@ -201,7 +202,7 @@ _col_decl_pattern = re.compile(
 
 def header_heuristic__declarations(header: list[str]) -> float:
     """
-    Return the fraction of fields that look like declaration.
+    Return the fraction of fields that look like declarations.
 
     A declaration looks like '<name> ":" <type> ("|" <type>)*' (with
     optional whitespace).
@@ -812,3 +813,185 @@ class HeaderSpecification:
         hs = HeaderSpecification(*self).expand_ranges().generate_names()
         names_types = ((fs.name, fs.type) for fs in hs)
         return records.Header(*names_types)
+
+
+# TODO map types to parser-constructors
+
+
+# TODO header -> parser / constructor (or where does parser / constructor come from?)
+# TODO how / when select columns?  select before parsing if possible: parse row, project row, parse and construct fields, yield record
+
+
+# have functions to do individual steps, and a function to put them all together
+# * detection -> (csv format, header spec(?), header)
+# * read rows (csv fmt, has header) -> Iterable[list[str]]
+# * select / project -> Iterable[list[str]]
+# * parse fields (error handler) -> Iterable[list[object]] or Iterable[Record]?
+# * wrap in records -> (Header,Iterable[Record])
+# what actually _are_ the reusable pieces?
+
+# need rewindable stream for sniffing standard in
+
+
+def parse_atom(text):
+    (val, err) = parse.atom_err(text, text)
+    return val
+
+
+
+# TODO map header fields to name--type pairs
+
+
+
+
+
+
+def inspect_csv(
+        filename,
+        csv_format=None,
+        default_csv_format=_default_format,
+        head_size=1024,
+) -> tuple[dict, int, list[str]]:
+    head = file_head(filename, head_size)
+    if csv_format is None:
+        csv_format = dict(default_csv_format)
+        csv_format.update(detect_csv_format(head))
+    (hdr_len, hdr, err) = detect_csv_header(head, csv_format)
+    return (csv_format, hdr_len, hdr)
+
+
+def parse_field(text):
+    (val, _) = parse.atom_err(text, text)
+    return val
+
+def parse_record(record):
+    return [parse_field(field) for field in record]
+
+def read_records(filename, csv_format=None):
+    if isinstance(csv_format, str):
+        csv_format = bpycsv.parse_csv_dialect(csv_format)
+    (csv_format, hdr_len, hdr) = inspect_csv(filename, csv_format)
+    if hdr_len is None:
+        raise ValueError(f'No first record detected: {filename!r}')
+    yield ([f'x{i}' for i in range(1, hdr_len + 1)]
+           if hdr is None
+           else hdr)
+    with open(filename, 'rt', newline='') as file:
+        reader = csv.reader(file, **csv_format)
+        # Skip the header
+        if hdr is not None:
+            next(iter(reader))
+        yield from map(parse_record, reader)
+
+
+def read_records( # TODO (see aou_oc:ovarian_cancer/dlm_tbls_cfg.py)
+        filename,
+        csv_format=None, # named dialect or format spec string
+        default_csv_format=None,
+        csv_header=None, # in flexible, "subset" idx:name:type syntax
+        default_csv_header=None,
+
+) -> tuple[records.Header, Iterable[records.Record]]:
+    """
+    csv_format:
+
+        String describing CSV format to use for input and output.  If
+        'None', the format will be detected.
+
+    default_csv_format:
+
+        String describing default format.  If 'None', the effective
+        default is whatever the CSV module uses.  Otherwise, this is
+        updated with what is detected (which may be incomplete).
+    """
+    #detect format (if not specified)
+    #detect header -> (names, types) # TODO pull header class from somewhere?
+    #setup parsing
+    #read csv records
+    #parse records
+    #return header, iterable of records
+
+
+# parsers are done
+
+# idea: ParsedRecord holds original text, line number, etc. in addition to parsed values (could subclass Record)
+# actually, have parsed values with provenance and errors.  provenance can only be record number and field number until doing own CSV parsing.
+# ParsedValue(text, provenance, value)
+# ParseError(text, provenance, attempted conversion, message)
+# CsvReaderProvenance(record number, field number)
+# CsvParserProvenance(line number, column number)
+
+# registry of CSV formats so can reference by name (code in OC common.py)
+
+# how sanity check what was detected?
+
+# how handle parsing errors? (need line number)
+
+# need to specify distance for matching
+
+
+def cli_subset_csv_rows(
+        csv_file,
+        include_rows,
+        *,
+        number_field: int=1,
+        renumber_start: int=1,
+        csv_format: str=None,
+        default_csv_format: str=None,
+        has_header: bool=None,
+        csv_output=sys.stdout,
+):
+    """
+    Limit rows to those whose numbers are in 'include_rows' and
+    renumber.
+
+    number_field:
+
+        Field containing the row number to filter on, given as a 1-based
+        index.
+
+    csv_format:
+
+        String describing CSV format to use for input and output.  If
+        'None', the format will be detected.
+
+    default_csv_format:
+
+        String describing default format.  If 'None', the effective
+        default is whatever the CSV module uses.  Otherwise, this is
+        updated with what is detected (which may be incomplete).
+
+    has_header:
+
+        Whether the input CSV file has a header, and, consequently,
+        whether the output CSV file will have a header.  If 'None', the
+        header will be detected.
+    """
+    # Parse CSV formats # TODO extract into function that recognizes names
+    if isinstance(csv_format, str):
+        csv_format = (common.default_csv_format
+                      if csv_format.lower() == 'unix'
+                      else bpycsv.parse_csv_dialect(csv_format))
+    if isinstance(default_csv_format, str):
+        default_csv_format = (common.default_csv_format
+                              if default_csv_format.lower() == 'unix'
+                              else bpycsv.parse_csv_dialect(default_csv_format))
+    # Setup
+    num_fld_idx = number_field - 1
+    # Set of columns to include
+    with bpyfiles.open(include_rows, 'rt') as file:
+        incl_row_nums = set(int(line) for line in file if line.strip() != '')
+    # Open IO
+    with (bpyfiles.open(csv_file, 'rt', newline='') as ifile,
+          bpyfiles.open(csv_output, 'wt', newline='') as ofile):
+        (csv_fmt, hdr, recs) = common.auto_read_csv_records(
+            ifile, csv_format, default_csv_format, has_header)
+        # Filter records
+        keep_rows = (r for r in recs if (r[num_fld_idx] in incl_row_nums))
+        # Output renumbered records
+        writer = csv.writer(ofile, **csv_fmt)
+        if hdr is not None:
+            writer.writerow(hdr)
+        for (num, rec) in enumerate(keep_rows, start=renumber_start):
+            rec[num_fld_idx] = num
+            writer.writerow(rec)

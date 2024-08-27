@@ -1,6 +1,6 @@
 """Tests 'csv.py'."""
 
-# Copyright (c) 2023 Aubrey Barnard.
+# Copyright (c) 2023-2024 Aubrey Barnard.
 #
 # This is free software released under the MIT License.  See LICENSE for
 # details.
