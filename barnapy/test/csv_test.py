@@ -8,6 +8,7 @@
 
 import csv as pycsv
 import io
+import os
 import textwrap
 import unittest
 
@@ -162,6 +163,39 @@ class ParseFormatTest(unittest.TestCase):
         for spec_dlct in specs_formats:
             (spec, dlct) = spec_dlct
             self.assertEqual(dlct, csv.parse_format(spec), spec_dlct)
+
+
+class FormatsRegistryTest(unittest.TestCase):
+
+    def test_c_pipe_unix(self):
+        self.assertEqual(dict(
+            delimiter='|',
+            quotechar='"',
+            doublequote=False,
+            escapechar='\\',
+            quoting=pycsv.QUOTE_MINIMAL,
+            lineterminator='\n',
+        ), csv.formats_registry()['c-pipe-unix'])
+
+    def test_c_tab_dos(self):
+        self.assertEqual(dict(
+            delimiter='\t',
+            quotechar='"',
+            doublequote=False,
+            escapechar='\\',
+            quoting=pycsv.QUOTE_MINIMAL,
+            lineterminator='\r\n',
+        ), csv.formats_registry()['c-tab-dos'])
+
+    def test_default_format(self):
+        self.assertEqual(dict(
+            delimiter=',',
+            quotechar='"',
+            doublequote=False,
+            escapechar='\\',
+            quoting=pycsv.QUOTE_MINIMAL,
+            lineterminator=os.linesep,
+        ), csv.default_format())
 
 
 class HeaderDetectionTest(unittest.TestCase):

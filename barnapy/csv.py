@@ -16,10 +16,12 @@ import dataclasses
 import datetime
 import decimal
 import io
+import os
 import re
 
 from . import parse
 from . import records
+from . import registry
 
 
 ##### CSV Formats #####
@@ -135,17 +137,112 @@ def parse_format(chars) -> dict:
 parse_csv_dialect = parse_format # TODO deprecate
 
 
-"""Default C-style CSV on Unix"""
+# Default CSV format (for arguments below) is C-style with EOLs
+# according to OS
 _default_format = dict(
     delimiter=',',
+    quotechar='"',
     doublequote=False,
     escapechar='\\',
-    lineterminator='\n',
-    quotechar='"',
     quoting=csv.QUOTE_MINIMAL,
+    lineterminator=os.linesep,
+    # Other parameters are stdlib 'csv' module defaults
 )
 
-# TODO put hierarchy here
+
+def _stdlib_csv_dialect_as_dict(dialect_class: type) -> dict:
+    """
+    Return a dictionary of CSV format parameters from a
+    'csv.Dialect' subclass.
+    """
+    attr_names = [name for name in dir(csv.Dialect) if not name.startswith('_')]
+    dialect_dict = {}
+    for attr_name in attr_names:
+        if hasattr(dialect_class, attr_name):
+            dialect_dict[attr_name] = getattr(dialect_class, attr_name)
+    return dialect_dict
+
+
+def _build_formats_registry() -> dict:
+    """Build a hierarchical registry of CSV formats."""
+    # Leave EOL out of default root format
+    dflt_fmt = dict(_default_format)
+    del dflt_fmt['lineterminator']
+    reg = registry.HierarchicalRegistry('CSV Formats')
+    reg.register_all([
+        # Dialects from the stdlib 'csv' module
+        ('excel', registry.RootEntry(_stdlib_csv_dialect_as_dict(csv.excel))),
+        ('excel-tab', registry.RootEntry(
+            _stdlib_csv_dialect_as_dict(csv.excel_tab))),
+        ('unix', registry.RootEntry(
+            _stdlib_csv_dialect_as_dict(csv.unix_dialect))),
+
+        # Base for formats with C-style quoting and escaping (as found
+        # in most programming languages)
+        ('c-style', registry.RootEntry(dflt_fmt)),
+
+        # Format as described in RFC 4180
+        # (https://www.ietf.org/rfc/rfc4180.txt)
+        ('rfc4180', registry.RootEntry(dict(
+            lineterminator='\r\n',     # 1.
+            delimiter=',',             # 4.
+            strict=True,               # 4.
+            skipinitialspace=False,    # 4.
+            quotechar='"',             # 5.
+            quoting=csv.QUOTE_MINIMAL, # 6.
+            doublequote=True,          # 7.
+            escapechar=None,           # 7. (implied)
+        ))),
+    ])
+    for (dlm_name, dlm) in [
+            ('comma', ','),
+            ('pipe', '|'),
+            ('semi', ';'),
+            ('tab', '\t'),
+    ]:
+        reg.register(f'c-{dlm_name}', registry.StaticEntry.Overlayer(
+            'c-style', dict(delimiter=dlm)))
+        for (eol_name, alt_name, eol) in [
+                ('lf', 'unix', '\n'),
+                ('crlf', 'dos', '\r\n'),
+        ]:
+            reg.register(
+                f'c-{dlm_name}-{eol_name}', registry.StaticEntry.Overlayer(
+                    f'c-{dlm_name}', dict(lineterminator=eol)))
+            reg.register(
+                f'c-{dlm_name}-{alt_name}', registry.AliasEntry(
+                    f'c-{dlm_name}-{eol_name}'))
+    # Aliases
+    eol = 'crlf' if os.linesep == '\r\n' else 'lf'
+    reg.register_all([
+        ('csv', registry.AliasEntry(f'c-comma-{eol}')),
+        ('tsv', registry.AliasEntry(f'c-tab-{eol}')),
+        ('sqlite', registry.AliasEntry(f'c-pipe-{eol}')),
+        ('default', registry.AliasEntry('csv')),
+    ])
+    return reg
+
+
+_formats_registry = None
+
+def formats_registry() -> dict[str, dict[str, object]]:
+    """Return a registry of recognized CSV formats."""
+    global _formats_registry
+    if _formats_registry is None:
+        _formats_registry = _build_formats_registry()
+    return _formats_registry
+
+
+def default_format() -> dict[str, object]:
+    """
+    Return the default CSV format.
+
+    The default CSV format is comma-delimited, with minimally-quoted,
+    C-style fields (double quoted strings with backslash escaping), and
+    EOLs according to OS.  (Other format parameters are left at their
+    defaults in the Python standard library 'csv' module.)
+    """
+    return formats_registry()['default']
 
 
 ##### Format and Header Detection #####
