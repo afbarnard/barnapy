@@ -69,6 +69,27 @@ class AliasEntryTest(unittest.TestCase):
         self.assertEqual(value, self.reg.value('seed'))
 
 
+class DerivedValueEntryTest(unittest.TestCase):
+
+    def test_overlay_dict(self):
+        overlay_dict = registry.DerivedValueEntry.overlay_dict
+        d1 = dict(a=1, b=2, c=3)
+        d2 = dict(d=4, e=5)
+        # Empty dicts and iterables
+        self.assertEqual({}, overlay_dict({}, ()))
+        self.assertEqual(d1, overlay_dict({}, d1))
+        self.assertEqual(d2, overlay_dict(d2, ()))
+        # Overlay dict
+        self.assertEqual(dict(zip('abcde', range(1, 6))),
+                         overlay_dict(d1, d2))
+        # Overlay iterable and keyword arguments
+        self.assertEqual(dict(zip('abcdef', range(1, 7))),
+                         overlay_dict(d2, d1.items(), f=6))
+        # Check originals not modified
+        self.assertEqual(dict(a=1, b=2, c=3), d1)
+        self.assertEqual(dict(d=4, e=5), d2)
+
+
 class DynamicEntryTest(unittest.TestCase):
 
     def setUp(self):

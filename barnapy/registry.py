@@ -130,7 +130,9 @@ class DerivedValueEntry(Entry):
             overlay: dict | Iterable[tuple[Hashable, object]],
             **kwargs,
     ) -> dict:
-        return dict(base).update(overlay, **kwargs)
+        overlayed = dict(base)
+        overlayed.update(overlay, **kwargs)
+        return overlayed
 
     @classmethod
     def Overrider(clas, parent_key: Hashable, value: object):
