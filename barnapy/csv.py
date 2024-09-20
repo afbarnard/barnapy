@@ -93,7 +93,7 @@ def parse_format(chars) -> dict:
         else:
             raise ValueError(
                 "Unrecognized CSV format parameter: doubling or escaping: "
-                f"'{chars[2]}' (not 'd' or 'e')")
+                f"{chars[2]!r} (not 'd' or 'e')")
     if len(chars) >= 4:
         if chars[3] == ' ':
             format['escapechar'] = None
@@ -111,7 +111,7 @@ def parse_format(chars) -> dict:
         else:
             raise ValueError(
                 "Unrecognized CSV format parameter: quoting mode: "
-                f"'{chars[4]}' (not 'm', 'a', 'n', or 'o')")
+                f"{chars[4]!r} (not 'm', 'a', 'n', or 'o')")
     if len(chars) >= 6:
         if chars[5] in ('k', 'K'):
             format['skipinitialspace'] = False
@@ -120,7 +120,7 @@ def parse_format(chars) -> dict:
         else:
             raise ValueError(
                 "Unrecognized CSV format parameter: trim space: "
-                f"'{chars[5]}' (not 'k' or 't')")
+                f"{chars[5]!r} (not 'k' or 't')")
     if len(chars) >= 7:
         if chars[6] in ('l', 'L'):
             format['strict'] = False
@@ -129,7 +129,7 @@ def parse_format(chars) -> dict:
         else:
             raise ValueError(
                 "Unrecognized CSV format parameter: strict length: "
-                f"'{chars[6]}' (not 'l' or 's')")
+                f"{chars[6]!r} (not 'l' or 's')")
     if len(chars) >= 8:
         format['lineterminator'] = chars[7:]
     return format
