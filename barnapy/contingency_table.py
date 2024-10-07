@@ -1,16 +1,18 @@
-"""2-by-2 contingency tables and scores"""
+"""2-by-2 contingency tables and scores."""
 
-# Copyright (c) 2017 Aubrey Barnard.  This is free software released
-# under the MIT license.  See LICENSE for details.
+# Copyright (c) 2017 Aubrey Barnard.
+#
+# This is free, open software released under the MIT license.  See
+# `LICENSE` for details.
 
 
 import math
 
 
 class TwoByTwoTable(object):
-    """Traditional 2-by-2 table as used in epidemiology, etc. to compare
-    exposures and outcomes
-
+    """
+    Traditional 2-by-2 table as used in epidemiology, etc. to compare
+    exposures and outcomes.
     """
 
     _num_arg_types = (int, float)
@@ -20,13 +22,13 @@ class TwoByTwoTable(object):
             exp_out=None, exp_no_out=None,
             out_no_exp=None, no_exp_out=None,
             exp_tot=None, out_tot=None, total=None,
-            ):
+    ):
         # Handle construction from 3-by-3 table corners
         if (isinstance(exp_out, self._num_arg_types)
             and isinstance(exp_tot, self._num_arg_types)
             and isinstance(out_tot, self._num_arg_types)
             and isinstance(total, self._num_arg_types)
-            ):
+        ):
             self._exp_out = exp_out
             self._exp_tot = exp_tot
             self._out_tot = out_tot
@@ -36,7 +38,7 @@ class TwoByTwoTable(object):
               and isinstance(exp_no_out, self._num_arg_types)
               and isinstance(out_no_exp, self._num_arg_types)
               and isinstance(no_exp_out, self._num_arg_types)
-              ):
+        ):
             self._exp_out = exp_out
             self._exp_tot = exp_out + exp_no_out
             self._out_tot = exp_out + out_no_exp
@@ -85,16 +87,16 @@ class TwoByTwoTable(object):
         return self._total
 
     def smoothed(self, pseudocount=1):
-        """Return a smoothed version of this table by adding the given
+        """
+        Return a smoothed version of this table by adding the given
         pseudocount to each of the four cells.
-
         """
         return TwoByTwoTable(
             exp_out=self.exp_out + pseudocount,
             exp_no_out=self.exp_no_out + pseudocount,
             out_no_exp=self.out_no_exp + pseudocount,
             no_exp_out=self.no_exp_out + pseudocount,
-            )
+        )
 
     def table_2x2(self, pseudocount=None):
         if isinstance(pseudocount, self._num_arg_types):
@@ -124,9 +126,9 @@ class TwoByTwoTable(object):
 
 
 class TemporalTwoByTwoTable(TwoByTwoTable):
-    """A temporal 2-by-2 table splits the first cell (exposure and outcome)
+    """
+    A temporal 2-by-2 table splits the first cell (exposure and outcome)
     into two counts: exposure before outcome and exposure after outcome.
-
     """
 
     def __init__(
@@ -134,14 +136,14 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
             exp_bef_out=None, exp_aft_out=None, exp_out=None,
             exp_no_out=None, out_no_exp=None, no_exp_out=None,
             exp_tot=None, out_tot=None, total=None,
-            ):
+    ):
         # Construct this class
         if ((isinstance(exp_bef_out, self._num_arg_types)
              and isinstance(exp_aft_out, self._num_arg_types))
             or (isinstance(exp_out, self._num_arg_types)
                 and (isinstance(exp_bef_out, self._num_arg_types)
                      or isinstance(exp_aft_out, self._num_arg_types)))
-            ):
+        ):
             self._exp_bef_out = (exp_bef_out
                                  if exp_bef_out is not None
                                  else exp_out - exp_aft_out)
@@ -156,7 +158,7 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
                 exp_out, exp_no_out,
                 out_no_exp, no_exp_out,
                 exp_tot, out_tot, total,
-                )
+            )
         # Otherwise arguments don't completely define a 2-by-2 table
         else:
             raise ValueError(
@@ -172,9 +174,9 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
         return self._exp_aft_out
 
     def smoothed(self, pseudocount=1):
-        """Return a smoothed version of this table by adding the given
+        """
+        Return a smoothed version of this table by adding the given
         pseudocount to each of the four cells.
-
         """
         half_count = pseudocount / 2
         return TemporalTwoByTwoTable(
@@ -184,29 +186,29 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
             exp_no_out=self.exp_no_out + pseudocount,
             out_no_exp=self.out_no_exp + pseudocount,
             no_exp_out=self.no_exp_out + pseudocount,
-            )
+        )
 
     def cohort_table(self):
-        """Creates a copy of this table that treats the counts as in a cohort
+        """
+        Creates a copy of this table that treats the counts as in a cohort
         study.  That is, 'exp_aft_out' is counted as part of
         'out_no_exp' rather than as part of 'exp_out'.  These are the
         counts a cohort study would use having followed subjects over
         time: the outcome happened first, so the exposure does not
         matter.
-
         """
         return TwoByTwoTable(
             exp_out=self.exp_bef_out,
             exp_tot=(self.exp_tot - self.exp_aft_out),
             out_tot=self.out_tot,
             total=self.total,
-            )
+        )
 
 
 def binary_mutual_information(table):
-    """Return the mutual information between the two binary variables in the
-    given 2-by-2 table
-
+    """
+    Return the mutual information between the two binary variables in the
+    given 2-by-2 table.
     """
     # Shortcut / Special-Case the zero distribution
     if table.total == 0:
@@ -234,12 +236,12 @@ def binary_mutual_information(table):
 
 
 def relative_risk(table):
-    """Return the relative risk for the given 2-by-2 table"""
+    """Return the relative risk for the given 2-by-2 table."""
     # When all the cells are zero or both numerators are zero the rates
     # are "equal" so the relative risk is one
     if ((table.exp_tot == 0 and table.no_exp_tot == 0)
         or (table.exp_out == 0 and table.out_no_exp == 0)
-        ):
+    ):
         return 1.0
     # If the numerator rate is zero, then the relative risk cannot get
     # any less, so it is also zero
@@ -255,12 +257,12 @@ def relative_risk(table):
 
 
 def odds_ratio(table):
-    """Return the odds ratio for the given 2-by-2 table"""
+    """Return the odds ratio for the given 2-by-2 table."""
     # When all the cells are zero or both numerators are zero the odds
     # are "equal" so the ratio is one
     if ((table.exp_tot == 0 and table.no_exp_tot == 0)
         or (table.exp_out == 0 and table.out_no_exp == 0)
-        ):
+    ):
         return 1.0
     # If the numerator odds are zero, then the ratio cannot get any
     # less, so it is zero
@@ -276,7 +278,7 @@ def odds_ratio(table):
 
 
 def absolute_risk_difference(table):
-    """Return the absolute risk difference for the given 2-by-2 table"""
+    """Return the absolute risk difference for the given 2-by-2 table."""
     # Absolute risk difference: (eo/et)-(one/net)
     # Define the risk as zero if the row totals are zero to avoid
     # division by zero
