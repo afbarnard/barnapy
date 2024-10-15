@@ -13,6 +13,7 @@ enable writing self-documenting code and avoid mix-ups.
 # `LICENSE` for details.
 
 
+import math
 from numbers import Real
 import typing
 
@@ -436,6 +437,26 @@ class Table2x2:
         return f1(
             tp=self.tp, fp=self.fp, fn=self.fn, tn=self.tn, default=default)
 
+    def mutual_information(self, default: Real=float('nan')) -> Real:
+        # Doc string copied below from 'binary_mutual_information'
+        return binary_mutual_information(
+            tp=self.tp, fp=self.fp, fn=self.fn, tn=self.tn, default=default)
+
+    def relative_risk(self, default: Real=float('nan')) -> Real:
+        # Doc string copied below from 'relative_risk'
+        return relative_risk(
+            tp=self.tp, fp=self.fp, fn=self.fn, tn=self.tn, default=default)
+
+    def odds_ratio(self, default: Real=float('nan')) -> Real:
+        # Doc string copied below from 'odds_ratio'
+        return odds_ratio(
+            tp=self.tp, fp=self.fp, fn=self.fn, tn=self.tn, default=default)
+
+    def absolute_risk_difference(self, default: Real=float('nan')) -> Real:
+        # Doc string copied below from 'absolute_risk_difference'
+        return absolute_risk_difference(
+            tp=self.tp, fp=self.fp, fn=self.fn, tn=self.tn, default=default)
+
 # Copy doc strings
 Table2x2.from_cls.__doc__ = Table2x2.from_classification_result.__doc__
 Table2x2.from_pppa.__doc__ = Table2x2.from_3x3_corners.__doc__
@@ -634,7 +655,119 @@ def f1(tp: Real, fp: Real, fn: Real, tn: Real,
 Table2x2.f1.__doc__ = f1.__doc__
 
 
-# TODO mutual information
+def binary_mutual_information(tp: Real, fp: Real, fn: Real, tn: Real,
+                              default: Real=float('nan')) -> Real:
+    """
+    Return the mutual information between the binary variables in the
+    given 2-by-2 table.
+
+    Return 'default' if the total number is zero.
+    """
+    # Totals
+    ye = tp + fp
+    ne = fn + tn
+    yo = tp + fn
+    no = fp + tn
+    all = tp + fp + fn + tn
+    # Shortcut / Special-Case the zero distribution
+    if all == 0:
+        return default
+    # Do the calculation in a way that handles zeros.  (If the numerator
+    # in the log is greater than zero, the denominator cannot be zero.)
+    mi_sum = 0.0
+    if tp > 0:
+        mi_sum += tp * math.log((tp * all) / (ye * yo))
+    if fp > 0:
+        mi_sum += fp * math.log((fp * all) / (ye * no))
+    if fn > 0:
+        mi_sum += fn * math.log((fn * all) / (yo * ne))
+    if tn > 0:
+        mi_sum += tn * math.log((tn * all) / (no * ne))
+    return mi_sum / all
+Table2x2.mutual_information.__doc__ = binary_mutual_information.__doc__
+
+
+ #### Epidemiological ####
+
+
+def relative_risk(tp: Real, fp: Real, fn: Real, tn: Real,
+                  default: Real=float('nan')) -> Real:
+    """
+    Return the relative risk (yeyo / ye) / (neyo / ne) for the given
+    2-by-2 table.
+
+    Return 'default' if the total number is zero.
+    """
+    # Totals
+    all = tp + fp + fn + tn
+    # Shortcut / Special-Case the zero distribution
+    if all == 0:
+        return default
+    # When both numerators are zero the rates are "equal" so the
+    # relative risk is one
+    if tp == 0 and fn == 0:
+        return 1
+    # If the numerator rate is zero, then the relative risk cannot get
+    # any less, so it is also zero
+    elif tp == 0:
+        return 0
+    # If the denominator rate is zero, then the relative risk cannot get
+    # any larger, so it is infinity
+    elif fn == 0:
+        return float('inf')
+    # (yeyo/ye)/(neyo/ne) -> (yeyo*ne)/(neyo*ye)
+    return (tp * (fn + tn)) / (fn * (tp + fp))
+
+
+def odds_ratio(tp: Real, fp: Real, fn: Real, tn: Real,
+               default: Real=float('nan')) -> Real:
+    """
+    Return the odds ratio (yeyo / yeno) / (neyo / neno) for the given
+    2-by-2 table.
+
+    Return 'default' if the total number is zero.
+    """
+    # Totals
+    all = tp + fp + fn + tn
+    # Shortcut / Special-Case the zero distribution
+    if all == 0:
+        return default
+    # When both numerators are zero the odds are "equal" so the ratio is
+    # one
+    if tp == 0 and fn == 0:
+        return 1
+    # If the numerator odds are zero, then the ratio cannot get any
+    # less, so it is zero
+    elif tp == 0:
+        return 0
+    # If the denominator odds are zero, then the ratio cannot get any
+    # larger, so it is infinity
+    elif fn == 0:
+        return float('inf')
+    # (yeyo/yeno)/(neyo/neno) -> (yeyo*neno)/(yeno*neyo)
+    return (tp * tn) / (fp * fn)
+
+
+def absolute_risk_difference(tp: Real, fp: Real, fn: Real, tn: Real,
+                             default: Real=float('nan')) -> Real:
+    """
+    Return the absolute risk difference (yeyo / ye) - (neyo / ne) for
+    the given 2-by-2 table.
+
+    Return 'default' if the total number is zero.
+    """
+    # Totals
+    all = tp + fp + fn + tn
+    # Shortcut / Special-Case the zero distribution
+    if all == 0:
+        return default
+    # Define the risk as zero if the numerators are zero to avoid
+    # division by zero
+    risk_ye = tp / (tp + fp) if tp > 0 else 0
+    risk_ne = fn / (fn + tn) if fn > 0 else 0
+    # Return the difference of the risks of outcome in the exposed and
+    # unexposed
+    return risk_ye - risk_ne
 
 
 ##### Hypothesis Tests #####

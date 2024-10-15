@@ -6,6 +6,7 @@
 # `LICENSE` for details.
 
 
+import math
 import unittest
 
 from .. import classification_analysis as ca
@@ -189,3 +190,147 @@ class Table2x2ScoresTest(unittest.TestCase):
             (2 * 5/10 * 5/10) / (5/10 + 5/10), self.even.f1(), delta=1e-15)
         self.assertAlmostEqual(
             (2 * 8/10 * 8/ 9) / (8/10 + 8/ 9), self.good.f1(), delta=1e-15)
+
+
+def mit(joint_count, marg1_count, marg2_count, total_count):
+    """Return one term in the mutual information sum"""
+    joint = joint_count / total_count
+    marg1 = marg1_count / total_count
+    marg2 = marg2_count / total_count
+    return joint * math.log(joint / (marg1 * marg2))
+
+
+class BinaryMutualInformationTest(unittest.TestCase):
+
+    def test_independent_uniform(self):
+        #   1    0
+        # 1 0.25 0.25 0.5
+        # 0 0.25 0.25 0.5
+        #   0.5  0.5
+        mi = ca.binary_mutual_information(1, 1, 1, 1)
+        self.assertAlmostEqual(0.0, mi, places=10)
+
+    def test_independent(self):
+        #   1    0
+        # 1 0.14 0.56 0.7
+        # 0 0.06 0.24 0.3
+        #   0.2  0.8
+        mi = ca.binary_mutual_information(14, 56, 6, 24)
+        self.assertAlmostEqual(0.0, mi, places=10)
+        exp = (mit(15, 72, 22, 104) + mit(57, 72, 82, 104) +
+               mit( 7, 32, 22, 104) + mit(25, 32, 82, 104))
+        act = ca.binary_mutual_information(15, 57, 7, 25)
+        self.assertAlmostEqual(exp, act, places=10)
+
+    def test_positively_correlated(self):
+        #   1    0
+        # 1 0.95 0.03 0.98
+        # 0 0.01 0.01 0.02
+        #   0.96 0.04
+        exp = (
+            0.95 * math.log(0.95 / (0.98 * 0.96))
+            + 0.03 * math.log(0.03 / (0.98 * 0.04))
+            + 0.01 * math.log(0.01 / (0.02 * 0.96))
+            + 0.01 * math.log(0.01 / (0.02 * 0.04)))
+        act = ca.binary_mutual_information(95, 3, 1, 1)
+        self.assertAlmostEqual(exp, act, places=10)
+        exp = (mit(96, 100, 98, 104) + mit(4, 100, 6, 104) +
+               mit( 2,   4, 98, 104) + mit(2,   4, 6, 104))
+        act = ca.binary_mutual_information(96, 4, 2, 2)
+        self.assertAlmostEqual(exp, act, places=10)
+
+    def test_negatively_correlated(self):
+        #   1    0
+        # 1 0.09 0.42 0.51
+        # 0 0.26 0.23 0.49
+        #   0.35 0.65
+        exp = (
+            0.09 * math.log(0.09 / (0.51 * 0.35))
+            + 0.42 * math.log(0.42 / (0.51 * 0.65))
+            + 0.26 * math.log(0.26 / (0.49 * 0.35))
+            + 0.23 * math.log(0.23 / (0.49 * 0.65)))
+        act = ca.binary_mutual_information(9, 42, 26, 23)
+        self.assertAlmostEqual(exp, act, places=10)
+        exp = (mit(10, 53, 37, 104) + mit(43, 53, 67, 104) +
+               mit(27, 51, 37, 104) + mit(24, 51, 67, 104))
+        act = ca.binary_mutual_information(10, 43, 27, 24)
+        self.assertAlmostEqual(exp, act, places=10)
+
+    def test_equal(self):
+        #   1    0
+        # 1 0.09 0    0.09
+        # 0 0    0.91 0.91
+        #   0.09 0.91
+        exp = (0.09 * math.log(0.09 / (0.09 * 0.09)) +
+               0.91 * math.log(0.91 / (0.91 * 0.91)))
+        act = ca.binary_mutual_information(9, 0, 0, 91)
+        self.assertAlmostEqual(exp, act, places=10)
+        exp = (mit(10, 11, 11, 104) + mit( 1, 11, 93, 104) +
+               mit( 1, 93, 11, 104) + mit(92, 93, 93, 104))
+        act = ca.binary_mutual_information(10, 1, 1, 92)
+        self.assertAlmostEqual(exp, act, places=10)
+
+    def test_zero(self):
+        mi = ca.binary_mutual_information(0, 0, 0, 0, default=-1)
+        self.assertAlmostEqual(-1, mi, places=10)
+
+    def _test_corner_ones(self): # TODO
+        pass
+
+    def test_mit(self):
+        exp = 0.33 * math.log(0.33 / (0.67 * 0.10))
+        act = mit(33, 67, 10, 100)
+        self.assertAlmostEqual(exp, act, places=10)
+
+
+class RelativeRiskTest(unittest.TestCase):
+
+    def test_ones(self):
+        rr = ca.relative_risk(1, 1, 1, 1)
+        self.assertAlmostEqual(1, rr, places=10)
+
+    def test_uniform(self):
+        rr = ca.relative_risk(123.4, 123.4, 123.4, 123.4)
+        self.assertAlmostEqual(1, rr, places=10)
+
+    def test_less_than_one(self):
+        exp = (1 / 5) / (9 / 15)  # 1/3
+        act = ca.relative_risk(1, 4, 9, 6)
+        self.assertAlmostEqual(exp, act, places=10)
+
+    def test_more_than_one(self):
+        exp = (9 / 9) / (6 / 9)  # 3/2
+        act = ca.relative_risk(9, 0, 6, 3)
+        self.assertAlmostEqual(exp, act, places=10)
+
+    def test_all_zero(self):
+        rr = ca.relative_risk(0, 0, 0, 0, default=-1)
+        self.assertAlmostEqual(-1, rr, places=10)
+
+    def test_yeyo_zero(self):
+        rr = ca.relative_risk(0, 0, 3, 7)
+        self.assertAlmostEqual(0, rr, places=10)
+        rr = ca.relative_risk(0, 3, 9, 4)
+        self.assertAlmostEqual(0, rr, places=10)
+
+    def test_neyo_zero(self):
+        rr = ca.relative_risk(6, 7, 0, 0)
+        self.assertAlmostEqual(float('inf'), rr, places=10)
+        rr = ca.relative_risk(9, 9, 0, 6)
+        self.assertAlmostEqual(float('inf'), rr, places=10)
+
+    def test_yeyo_neyo_zero(self):
+        rr = ca.relative_risk(0, 5, 0, 5)
+        self.assertAlmostEqual(1, rr, places=10)
+        rr = ca.relative_risk(0, 5, 0, 0)
+        self.assertAlmostEqual(1, rr, places=10)
+        rr = ca.relative_risk(0, 0, 0, 5)
+        self.assertAlmostEqual(1, rr, places=10)
+
+    def test_yeno_neno_zero(self):
+        rr = ca.relative_risk(8, 0, 1, 0)
+        self.assertAlmostEqual(1, rr, places=10)
+
+
+# TODO test odds_ratio
+# TODO test absolute_risk_difference
