@@ -8,7 +8,14 @@
 
 import math
 
+from . import code
 
+
+# Deprecate the old API
+_deprecated = code.Deprecated(since_version='0.3.11', remove_version='0.5.0') # TODO remove this module in version 0.5.0
+
+
+@_deprecated.w_message("Please use 'classification_analysis.Table2x2' instead.")
 class TwoByTwoTable(object):
     """
     Traditional 2-by-2 table as used in epidemiology, etc. to compare
@@ -125,6 +132,7 @@ class TwoByTwoTable(object):
                     (self.out_tot, self.no_out_tot, self.total))
 
 
+@_deprecated.w_message("Please use 'classification_analysis.TemporalTable2x2' instead.")
 class TemporalTwoByTwoTable(TwoByTwoTable):
     """
     A temporal 2-by-2 table splits the first cell (exposure and outcome)
@@ -205,6 +213,7 @@ class TemporalTwoByTwoTable(TwoByTwoTable):
         )
 
 
+@_deprecated.w_message("Please use 'classification_analysis.Table2x2.binary_mutual_information' instead.")
 def binary_mutual_information(table):
     """
     Return the mutual information between the two binary variables in the
@@ -235,6 +244,7 @@ def binary_mutual_information(table):
     return mi_sum / table.total
 
 
+@_deprecated.w_message("Please use 'classification_analysis.Table2x2.relative_risk' instead.")
 def relative_risk(table):
     """Return the relative risk for the given 2-by-2 table."""
     # When all the cells are zero or both numerators are zero the rates
@@ -256,6 +266,7 @@ def relative_risk(table):
             / (table.out_no_exp * table.exp_tot))
 
 
+@_deprecated.w_message("Please use 'classification_analysis.Table2x2.odds_ratio' instead.")
 def odds_ratio(table):
     """Return the odds ratio for the given 2-by-2 table."""
     # When all the cells are zero or both numerators are zero the odds
@@ -277,6 +288,7 @@ def odds_ratio(table):
             / (table.exp_no_out * table.out_no_exp))
 
 
+@_deprecated.w_message("Please use 'classification_analysis.Table2x2.absolute_risk_difference' instead.")
 def absolute_risk_difference(table):
     """Return the absolute risk difference for the given 2-by-2 table."""
     # Absolute risk difference: (eo/et)-(one/net)
